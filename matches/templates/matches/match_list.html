@@ -1,0 +1,33 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">Matches</h1>
+        <p class="text-muted mb-0">Browse the football matches currently stored in the system.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'matches:match_create' %}">Create match</a>
+</div>
+
+<div class="row g-3">
+    {% for match in matches %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 card-title mb-2">{{ match.title }}</h2>
+                <p class="card-text text-muted mb-2">{{ match.date_time }}</p>
+                <p class="card-text mb-1"><strong>Location:</strong> {{ match.location }}</p>
+                <p class="card-text mb-1"><strong>Skill:</strong> {{ match.get_skill_level_display }}</p>
+                <p class="card-text mb-1"><strong>Players:</strong> {{ match.max_players }}</p>
+                <p class="card-text mb-3"><strong>Visibility:</strong> {{ match.get_visibility_display }}</p>
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'matches:match_detail' match.pk %}">View details</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info mb-0">No matches have been created yet.</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

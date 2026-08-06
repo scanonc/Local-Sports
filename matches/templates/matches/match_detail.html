@@ -1,0 +1,28 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">{{ match.title }}</h1>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Date and time</dt>
+                    <dd class="col-sm-8">{{ match.date_time }}</dd>
+                    <dt class="col-sm-4">Location</dt>
+                    <dd class="col-sm-8">{{ match.location }}</dd>
+                    <dt class="col-sm-4">Skill level</dt>
+                    <dd class="col-sm-8">{{ match.get_skill_level_display }}</dd>
+                    <dt class="col-sm-4">Maximum players</dt>
+                    <dd class="col-sm-8">{{ match.max_players }}</dd>
+                    <dt class="col-sm-4">Visibility</dt>
+                    <dd class="col-sm-8">{{ match.get_visibility_display }}</dd>
+                    <dt class="col-sm-4">Organizer</dt>
+                    <dd class="col-sm-8">{{ match.organizer }}</dd>
+                </dl>
+                <a class="btn btn-outline-primary mt-3" href="{% url 'matches:match_update' match.pk %}">Edit match</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

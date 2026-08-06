@@ -1,0 +1,48 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-4">{% if object %}Edit match{% else %}Create match{% endif %}</h1>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.title.id_for_label }}">Title</label>
+                        {{ form.title }}
+                        {{ form.title.errors }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.date_time.id_for_label }}">Date and time</label>
+                        {{ form.date_time }}
+                        {{ form.date_time.errors }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.location.id_for_label }}">Location</label>
+                        {{ form.location }}
+                        {{ form.location.errors }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.skill_level.id_for_label }}">Skill level</label>
+                        {{ form.skill_level }}
+                        {{ form.skill_level.errors }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.max_players.id_for_label }}">Maximum players</label>
+                        {{ form.max_players }}
+                        {{ form.max_players.errors }}
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="{{ form.visibility.id_for_label }}">Visibility</label>
+                        {{ form.visibility }}
+                        {{ form.visibility.errors }}
+                    </div>
+                    <button class="btn btn-primary" type="submit">Save match</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
