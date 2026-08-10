@@ -59,3 +59,50 @@ class Match(models.Model):
 	def save(self, *args, **kwargs):
 		self.full_clean()
 		return super().save(*args, **kwargs)
+
+	@property
+	def confirmed_participants_count(self):
+		return self.participants.filter(status=ParticipantStatus.CONFIRMED).count()
+
+	@property
+	def is_full(self):
+		return self.confirmed_participants_count >= self.max_players
+
+	@property
+	def has_started(self):
+		return self.date_time < timezone.now()
+
+
+class ParticipantStatus(models.TextChoices):
+	CONFIRMED = 'confirmed', 'Confirmed'
+	LEFT = 'left', 'Left'
+
+
+class MatchParticipant(models.Model):
+	match = models.ForeignKey(
+		Match,
+		on_delete=models.CASCADE,
+		related_name='participants',
+	)
+	player = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='match_participations',
+	)
+	status = models.CharField(
+		max_length=20,
+		choices=ParticipantStatus.choices,
+		default=ParticipantStatus.CONFIRMED,
+	)
+	attendance_confirmed = models.BooleanField(default=False)
+	joined_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		ordering = ['joined_at']
+		constraints = [
+			models.UniqueConstraint(fields=['match', 'player'], name='unique_match_player'),
+		]
+
+	def __str__(self):
+		return f'{self.player} - {self.match} ({self.status})'

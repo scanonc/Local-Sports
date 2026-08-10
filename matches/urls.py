@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import MatchCreateView, MatchDetailView, MatchListView, MatchUpdateView
+from .views import (
+    MatchCreateView,
+    MatchDetailView,
+    MatchJoinView,
+    MatchLeaveView,
+    MatchListView,
+    MatchUpdateView,
+)
 
 app_name = 'matches'
 
@@ -9,4 +16,6 @@ urlpatterns = [
     path('create/', MatchCreateView.as_view(), name='match_create'),
     path('<int:pk>/', MatchDetailView.as_view(), name='match_detail'),
     path('<int:pk>/edit/', MatchUpdateView.as_view(), name='match_update'),
+    path('<int:pk>/join/', MatchJoinView.as_view(), name='match_join'),
+    path('<int:pk>/leave/', MatchLeaveView.as_view(), name='match_leave'),
 ]

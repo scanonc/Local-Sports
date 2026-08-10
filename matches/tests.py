@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from .forms import MatchForm
-from .models import Match
+from .models import Match, MatchParticipant, ParticipantStatus
 
 
 User = get_user_model()
@@ -135,3 +135,175 @@ class MatchViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Sunday Match')
+
+
+class MatchJoinViewTests(TestCase):
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.player = User.objects.create_user(
+            username='player',
+            email='player@example.com',
+            password='testpass123',
+        )
+        self.public_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Public Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=2,
+            visibility='public',
+        )
+        self.approval_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Approval Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=10,
+            visibility='approval_required',
+        )
+
+    def test_join_requires_login(self):
+        response = self.client.post(reverse('matches:match_join', kwargs={'pk': self.public_match.pk}))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+
+    def test_authenticated_player_can_join_public_match(self):
+        self.client.login(username='player', password='testpass123')
+
+        response = self.client.post(reverse('matches:match_join', kwargs={'pk': self.public_match.pk}))
+
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.public_match.pk}))
+        self.assertTrue(
+            MatchParticipant.objects.filter(
+                match=self.public_match, player=self.player, status=ParticipantStatus.CONFIRMED
+            ).exists()
+        )
+
+    def test_cannot_join_approval_required_match(self):
+        self.client.login(username='player', password='testpass123')
+
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.approval_match.pk}))
+
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.approval_match, player=self.player).exists()
+        )
+
+    def test_cannot_join_twice(self):
+        self.client.login(username='player', password='testpass123')
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.public_match.pk}))
+
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.public_match.pk}))
+
+        self.assertEqual(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.player).count(), 1
+        )
+
+    def test_organizer_cannot_join_own_match(self):
+        self.client.login(username='organizer', password='testpass123')
+
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.public_match.pk}))
+
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.organizer).exists()
+        )
+
+    def test_cannot_join_full_match(self):
+        other_player = User.objects.create_user(
+            username='other_player', email='other_player@example.com', password='testpass123'
+        )
+        MatchParticipant.objects.create(match=self.public_match, player=self.player)
+        MatchParticipant.objects.create(match=self.public_match, player=other_player)
+        third_player = User.objects.create_user(
+            username='third_player', email='third_player@example.com', password='testpass123'
+        )
+
+        self.client.login(username='third_player', password='testpass123')
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.public_match.pk}))
+
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=third_player).exists()
+        )
+
+    def test_cannot_join_past_match(self):
+        past_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Past Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+        )
+        Match.objects.filter(pk=past_match.pk).update(date_time=timezone.now() - timedelta(days=1))
+
+        self.client.login(username='player', password='testpass123')
+        self.client.post(reverse('matches:match_join', kwargs={'pk': past_match.pk}))
+
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=past_match, player=self.player).exists()
+        )
+
+
+class MatchLeaveViewTests(TestCase):
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.player = User.objects.create_user(
+            username='player',
+            email='player@example.com',
+            password='testpass123',
+        )
+        self.match = Match.objects.create(
+            organizer=self.organizer,
+            title='Public Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+        )
+
+    def test_leave_requires_login(self):
+        response = self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+
+    def test_participant_can_leave_match(self):
+        MatchParticipant.objects.create(match=self.match, player=self.player)
+        self.client.login(username='player', password='testpass123')
+
+        response = self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+        participant = MatchParticipant.objects.get(match=self.match, player=self.player)
+        self.assertEqual(participant.status, ParticipantStatus.LEFT)
+
+    def test_leaving_frees_a_spot_to_rejoin(self):
+        MatchParticipant.objects.create(match=self.match, player=self.player)
+        self.client.login(username='player', password='testpass123')
+        self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.match.pk}))
+
+        participant = MatchParticipant.objects.get(match=self.match, player=self.player)
+        self.assertEqual(participant.status, ParticipantStatus.CONFIRMED)
+        self.assertEqual(MatchParticipant.objects.filter(match=self.match, player=self.player).count(), 1)
+
+    def test_non_participant_cannot_leave(self):
+        self.client.login(username='player', password='testpass123')
+
+        response = self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+        self.assertFalse(MatchParticipant.objects.filter(match=self.match, player=self.player).exists())
