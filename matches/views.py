@@ -5,7 +5,14 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from .forms import MatchForm
-from .models import Match, MatchParticipant, MatchVisibility, ParticipantStatus
+from .models import (
+    JoinRequest,
+    JoinRequestStatus,
+    Match,
+    MatchParticipant,
+    MatchVisibility,
+    ParticipantStatus,
+)
 
 
 class MatchDetailView(DetailView):
@@ -101,7 +108,65 @@ class MatchJoinView(LoginRequiredMixin, View):
         messages.success(request, 'You have joined the match.')
         return redirect('matches:match_detail', pk=match.pk)
 
+class MatchRequestJoinView(LoginRequiredMixin, View):
+    """FR4 - Request to join a match that requires organizer approval."""
 
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id == request.user.id:
+            messages.error(request, 'You are the organizer of this match.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.visibility != MatchVisibility.APPROVAL_REQUIRED:
+            messages.error(
+                request,
+                'This match does not require approval to join.',
+            )
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.has_started:
+            messages.error(
+                request,
+                'This match has already started or finished.',
+            )
+            return redirect('matches:match_detail', pk=match.pk)
+
+        participant = MatchParticipant.objects.filter(
+            match=match,
+            player=request.user,
+            status=ParticipantStatus.CONFIRMED,
+        ).exists()
+
+        if participant:
+            messages.info(request, 'You already joined this match.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        existing_request = JoinRequest.objects.filter(
+            match=match,
+            player=request.user,
+            request_status=JoinRequestStatus.PENDING,
+        ).exists()
+
+        if existing_request:
+            messages.info(
+                request,
+                'You already have a pending request for this match.',
+            )
+            return redirect('matches:match_detail', pk=match.pk)
+
+        JoinRequest.objects.create(
+            match=match,
+            player=request.user,
+        )
+
+        messages.success(
+            request,
+            'Your request to join the match has been sent.',
+        )
+        return redirect('matches:match_detail', pk=match.pk)
+
+    
 class MatchLeaveView(LoginRequiredMixin, View):
     """FR6 - Leave match.
 

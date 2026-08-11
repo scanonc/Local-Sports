@@ -38,8 +38,11 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-primary">Join match</button>
                         </form>
-                        {% elif match.visibility != 'public' %}
-                        <span class="align-self-center text-muted">This match requires the organizer's approval to join.</span>
+                        {% elif match.visibility == 'approval_required' and not match.has_started %}
+                        <form method="post" action="{% url 'matches:match_request_join' match.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary">Request to join</button>
+                        </form>
                         {% elif match.has_started %}
                         <span class="align-self-center text-muted">This match has already started.</span>
                         {% elif match.is_full %}
