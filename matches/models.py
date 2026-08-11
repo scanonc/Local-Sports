@@ -106,3 +106,27 @@ class MatchParticipant(models.Model):
 
 	def __str__(self):
 		return f'{self.player} - {self.match} ({self.status})'
+
+class JoinRequestStatus(models.TextChoices):
+    PENDING = 'pending', 'Pending'
+    ACCEPTED = 'accepted', 'Accepted'
+    REJECTED = 'rejected', 'Rejected'
+
+
+class JoinRequest(models.Model):
+    player = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='join_requests',
+    )
+    match = models.ForeignKey(
+        Match,
+        on_delete=models.CASCADE,
+        related_name='join_requests',
+    )
+    request_date = models.DateTimeField(auto_now_add=True)
+    request_status = models.CharField(
+        max_length=20,
+        choices=JoinRequestStatus.choices,
+        default=JoinRequestStatus.PENDING,
+    )
