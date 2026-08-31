@@ -72,10 +72,41 @@ class Match(models.Model):
 	def has_started(self):
 		return self.date_time < timezone.now()
 
+	@property
+	def waiting_participants(self):
+		return self.participants.filter(status=ParticipantStatus.WAITING).order_by('updated_at')
+
+	@property
+	def waiting_list_count(self):
+		return self.waiting_participants.count()
+
+	def promote_from_waiting_list(self):
+		"""FR11 - Automatic replacement.
+
+		Fills any open confirmed spots with the longest-waiting players,
+		in the order they joined the waiting list (FIFO). Called whenever
+		a spot may have opened up: a participant leaving, or the organizer
+		increasing max_players. Returns the participants that were promoted.
+		"""
+		promoted = []
+
+		while not self.is_full:
+			next_in_line = self.waiting_participants.first()
+
+			if not next_in_line:
+				break
+
+			next_in_line.status = ParticipantStatus.CONFIRMED
+			next_in_line.save(update_fields=['status', 'updated_at'])
+			promoted.append(next_in_line)
+
+		return promoted
+
 
 class ParticipantStatus(models.TextChoices):
 	CONFIRMED = 'confirmed', 'Confirmed'
 	LEFT = 'left', 'Left'
+	WAITING = 'waiting', 'Waiting'
 
 
 class MatchParticipant(models.Model):

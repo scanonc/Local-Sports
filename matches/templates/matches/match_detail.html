@@ -21,6 +21,8 @@
                     <dd class="col-sm-8">{{ match.organizer }}</dd>
                     <dt class="col-sm-4">Players joined</dt>
                     <dd class="col-sm-8">{{ match.confirmed_participants_count }} / {{ match.max_players }}</dd>
+                    <dt class="col-sm-4">Waiting list</dt>
+                    <dd class="col-sm-8">{{ match.waiting_list_count }}</dd>
                 </dl>
 
                 <div class="d-flex flex-wrap gap-2 mt-3">
@@ -33,10 +35,21 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-danger">Leave match</button>
                         </form>
+                        {% elif user_is_waiting %}
+                        <span class="align-self-center text-muted">You are #{{ user_waiting_position }} on the waiting list.</span>
+                        <form method="post" action="{% url 'matches:match_leave' match.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger">Leave waiting list</button>
+                        </form>
                         {% elif match.visibility == 'public' and not match.has_started and not match.is_full %}
                         <form method="post" action="{% url 'matches:match_join' match.pk %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-primary">Join match</button>
+                        </form>
+                        {% elif match.visibility == 'public' and not match.has_started and match.is_full %}
+                        <form method="post" action="{% url 'matches:match_join' match.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-warning">Join waiting list</button>
                         </form>
                         {% elif match.visibility == 'approval_required' and not match.has_started %}
                         <form method="post" action="{% url 'matches:match_request_join' match.pk %}">
@@ -70,7 +83,7 @@
 
                         <div class="d-flex gap-2">
                             <form method="post"
-                                  action="{% url 'matches:match_request_accept' match.pk join_request.pk %}">
+                                action="{% url 'matches:match_request_accept' match.pk join_request.pk %}">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-success">
                                     Accept
@@ -78,7 +91,7 @@
                             </form>
 
                             <form method="post"
-                                  action="{% url 'matches:match_request_reject' match.pk join_request.pk %}">
+                                action="{% url 'matches:match_request_reject' match.pk join_request.pk %}">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-danger">
                                     Reject
@@ -88,6 +101,18 @@
                     </div>
                     {% endfor %}
                 </div>
+                {% endif %}
+
+                {% if user_is_organizer and waiting_list %}
+                <hr class="my-4">
+
+                <h2 class="h5 mb-3">Waiting list</h2>
+
+                <ol class="list-group list-group-numbered">
+                    {% for participant in waiting_list %}
+                    <li class="list-group-item">{{ participant.player }}</li>
+                    {% endfor %}
+                </ol>
                 {% endif %}
             </div>
         </div>

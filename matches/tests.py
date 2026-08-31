@@ -214,7 +214,7 @@ class MatchJoinViewTests(TestCase):
             MatchParticipant.objects.filter(match=self.public_match, player=self.organizer).exists()
         )
 
-    def test_cannot_join_full_match(self):
+    def test_joining_full_match_goes_to_waiting_list(self):
         other_player = User.objects.create_user(
             username='other_player', email='other_player@example.com', password='testpass123'
         )
@@ -227,9 +227,8 @@ class MatchJoinViewTests(TestCase):
         self.client.login(username='third_player', password='testpass123')
         self.client.post(reverse('matches:match_join', kwargs={'pk': self.public_match.pk}))
 
-        self.assertFalse(
-            MatchParticipant.objects.filter(match=self.public_match, player=third_player).exists()
-        )
+        participant = MatchParticipant.objects.get(match=self.public_match, player=third_player)
+        self.assertEqual(participant.status, ParticipantStatus.WAITING)
 
     def test_cannot_join_past_match(self):
         past_match = Match.objects.create(
@@ -307,3 +306,167 @@ class MatchLeaveViewTests(TestCase):
 
         self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
         self.assertFalse(MatchParticipant.objects.filter(match=self.match, player=self.player).exists())
+
+
+class WaitingListTests(TestCase):
+    """FR10 - Waiting list."""
+
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer', email='organizer@example.com', password='testpass123'
+        )
+        self.player_a = User.objects.create_user(
+            username='player_a', email='player_a@example.com', password='testpass123'
+        )
+        self.player_b = User.objects.create_user(
+            username='player_b', email='player_b@example.com', password='testpass123'
+        )
+        self.player_c = User.objects.create_user(
+            username='player_c', email='player_c@example.com', password='testpass123'
+        )
+        self.player_a2 = User.objects.create_user(
+            username='player_a2', email='player_a2@example.com', password='testpass123'
+        )
+        self.match = Match.objects.create(
+            organizer=self.organizer,
+            title='Small Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=2,
+            visibility='public',
+        )
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_a, status=ParticipantStatus.CONFIRMED
+        )
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_a2, status=ParticipantStatus.CONFIRMED
+        )
+
+    def test_joining_full_match_adds_to_waiting_list(self):
+        self.client.login(username='player_b', password='testpass123')
+
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.match.pk}))
+
+        participant = MatchParticipant.objects.get(match=self.match, player=self.player_b)
+        self.assertEqual(participant.status, ParticipantStatus.WAITING)
+
+    def test_cannot_join_waiting_list_twice(self):
+        self.client.login(username='player_b', password='testpass123')
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.match.pk}))
+
+        self.client.post(reverse('matches:match_join', kwargs={'pk': self.match.pk}))
+
+        self.assertEqual(
+            MatchParticipant.objects.filter(match=self.match, player=self.player_b).count(), 1
+        )
+
+    def test_waiting_list_keeps_join_order(self):
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_b, status=ParticipantStatus.WAITING
+        )
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_c, status=ParticipantStatus.WAITING
+        )
+
+        waiting = list(self.match.waiting_participants)
+
+        self.assertEqual(waiting, [
+            MatchParticipant.objects.get(match=self.match, player=self.player_b),
+            MatchParticipant.objects.get(match=self.match, player=self.player_c),
+        ])
+
+    def test_player_can_leave_waiting_list(self):
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_b, status=ParticipantStatus.WAITING
+        )
+        self.client.login(username='player_b', password='testpass123')
+
+        self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        participant = MatchParticipant.objects.get(match=self.match, player=self.player_b)
+        self.assertEqual(participant.status, ParticipantStatus.LEFT)
+
+
+class AutomaticReplacementTests(TestCase):
+    """FR11 - Automatic replacement."""
+
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer', email='organizer@example.com', password='testpass123'
+        )
+        self.player_a = User.objects.create_user(
+            username='player_a', email='player_a@example.com', password='testpass123'
+        )
+        self.player_a2 = User.objects.create_user(
+            username='player_a2', email='player_a2@example.com', password='testpass123'
+        )
+        self.player_b = User.objects.create_user(
+            username='player_b', email='player_b@example.com', password='testpass123'
+        )
+        self.player_c = User.objects.create_user(
+            username='player_c', email='player_c@example.com', password='testpass123'
+        )
+        self.match = Match.objects.create(
+            organizer=self.organizer,
+            title='Small Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=2,
+            visibility='public',
+        )
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_a, status=ParticipantStatus.CONFIRMED
+        )
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_a2, status=ParticipantStatus.CONFIRMED
+        )
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_b, status=ParticipantStatus.WAITING
+        )
+        MatchParticipant.objects.create(
+            match=self.match, player=self.player_c, status=ParticipantStatus.WAITING
+        )
+
+    def test_leaving_promotes_first_waiting_player(self):
+        self.client.login(username='player_a', password='testpass123')
+
+        self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        player_b = MatchParticipant.objects.get(match=self.match, player=self.player_b)
+        player_c = MatchParticipant.objects.get(match=self.match, player=self.player_c)
+        self.assertEqual(player_b.status, ParticipantStatus.CONFIRMED)
+        self.assertEqual(player_c.status, ParticipantStatus.WAITING)
+
+    def test_leaving_waiting_list_does_not_promote_anyone(self):
+        self.client.login(username='player_c', password='testpass123')
+
+        self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        player_a = MatchParticipant.objects.get(match=self.match, player=self.player_a)
+        player_a2 = MatchParticipant.objects.get(match=self.match, player=self.player_a2)
+        player_b = MatchParticipant.objects.get(match=self.match, player=self.player_b)
+        self.assertEqual(player_a.status, ParticipantStatus.CONFIRMED)
+        self.assertEqual(player_a2.status, ParticipantStatus.CONFIRMED)
+        self.assertEqual(player_b.status, ParticipantStatus.WAITING)
+
+    def test_increasing_max_players_promotes_from_waiting_list(self):
+        self.client.login(username='organizer', password='testpass123')
+
+        self.client.post(
+            reverse('matches:match_update', kwargs={'pk': self.match.pk}),
+            data={
+                'title': self.match.title,
+                'date_time': self.match.date_time.strftime('%Y-%m-%dT%H:%M'),
+                'location': self.match.location,
+                'skill_level': self.match.skill_level,
+                'max_players': 3,
+                'visibility': self.match.visibility,
+            },
+        )
+
+        player_b = MatchParticipant.objects.get(match=self.match, player=self.player_b)
+        player_c = MatchParticipant.objects.get(match=self.match, player=self.player_c)
+        self.assertEqual(player_b.status, ParticipantStatus.CONFIRMED)
+        self.assertEqual(player_c.status, ParticipantStatus.WAITING)
