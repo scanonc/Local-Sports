@@ -44,22 +44,6 @@ class Match(models.Model):
 	def get_absolute_url(self):
 		return reverse('matches:match_detail', kwargs={'pk': self.pk})
 
-	def clean(self):
-		errors = {}
-
-		if self.date_time and self.date_time < timezone.now():
-			errors['date_time'] = 'Match date and time cannot be in the past.'
-
-		if self.max_players is not None and self.max_players < 2:
-			errors['max_players'] = 'Maximum number of players must be at least 2.'
-
-		if errors:
-			raise ValidationError(errors)
-
-	def save(self, *args, **kwargs):
-		self.full_clean()
-		return super().save(*args, **kwargs)
-
 	@property
 	def confirmed_participants_count(self):
 		return self.participants.filter(status=ParticipantStatus.CONFIRMED).count()
@@ -130,3 +114,16 @@ class JoinRequest(models.Model):
         choices=JoinRequestStatus.choices,
         default=JoinRequestStatus.PENDING,
     )
+
+    class Meta:
+        ordering = ['-request_date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['match', 'player'],
+                condition=models.Q(request_status=JoinRequestStatus.PENDING),
+                name='unique_pending_join_request',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.player} -> {self.match} ({self.request_status})'
