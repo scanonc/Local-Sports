@@ -44,6 +44,31 @@ class Match(models.Model):
 	def get_absolute_url(self):
 		return reverse('matches:match_detail', kwargs={'pk': self.pk})
 
+	def clean(self):
+		errors = {}
+
+		if self.date_time and self.date_time < timezone.now():
+			errors['date_time'] = 'Match date and time cannot be in the past.'
+
+		if self.max_players is not None and self.max_players < 2:
+			errors['max_players'] = 'Maximum number of players must be at least 2.'
+
+		if self.pk is not None:
+			confirmed_count = self.participants.filter(
+				status=ParticipantStatus.CONFIRMED
+			).count()
+			if self.max_players is not None and self.max_players < confirmed_count:
+				errors['max_players'] = (
+					f'Maximum players cannot be less than {confirmed_count} confirmed participants.'
+				)
+
+		if errors:
+			raise ValidationError(errors)
+
+	def save(self, *args, **kwargs):
+		self.full_clean()
+		return super().save(*args, **kwargs)
+
 	@property
 	def confirmed_participants_count(self):
 		return self.participants.filter(status=ParticipantStatus.CONFIRMED).count()

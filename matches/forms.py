@@ -1,7 +1,6 @@
 from django import forms
-from django.core.exceptions import ValidationError
 
-from .models import Match, ParticipantStatus
+from .models import Match
 
 
 class MatchForm(forms.ModelForm):
@@ -13,7 +12,6 @@ class MatchForm(forms.ModelForm):
         input_formats=['%Y-%m-%dT%H:%M'],
     )
 
-    join_as_player = forms.BooleanField(required=False, label='I want to participate in this match')
     class Meta:
         model = Match
         fields = ['title', 'date_time', 'location', 'skill_level', 'max_players', 'visibility']
@@ -24,18 +22,3 @@ class MatchForm(forms.ModelForm):
             'max_players': forms.NumberInput(attrs={'class': 'form-control', 'min': 2}),
             'visibility': forms.Select(attrs={'class': 'form-select'}),
         }
-
-    def clean(self):
-        cleaned_data = super().clean()
-        # When editing an existing match, ensure max_players is not reduced below confirmed participants
-        if self.instance.pk:
-            confirmed_count = self.instance.participants.filter(
-                status=ParticipantStatus.CONFIRMED
-            ).count()
-            max_players = cleaned_data.get('max_players')
-            if max_players and max_players < confirmed_count:
-                self.add_error(
-                    'max_players',
-                    f'Maximum players cannot be less than {confirmed_count} confirmed participants.'
-                )
-        return cleaned_data
