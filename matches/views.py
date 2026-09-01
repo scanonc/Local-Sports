@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -12,6 +14,7 @@ from .models import (
     JoinRequestStatus,
     Match,
     MatchParticipant,
+    MatchSkillLevel,
     MatchStatus,
     MatchVisibility,
     ParticipantStatus,
@@ -79,9 +82,47 @@ class MatchDetailView(DetailView):
 
 
 class MatchListView(ListView):
+    """FR3 & FR12 - Browse and filter active matches."""
+
     model = Match
     template_name = 'matches/match_list.html'
     context_object_name = 'matches'
+
+    def get_queryset(self):
+        queryset = Match.objects.filter(status=MatchStatus.ACTIVE)
+
+        location = self.request.GET.get('location', '').strip()
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+
+        skill_level = self.request.GET.get('skill_level', '').strip()
+        if skill_level and skill_level in MatchSkillLevel.values:
+            queryset = queryset.filter(skill_level=skill_level)
+
+        date_str = self.request.GET.get('date', '').strip()
+        if date_str:
+            try:
+                filter_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                queryset = queryset.filter(date_time__date__gte=filter_date)
+            except ValueError:
+                pass
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        location_query = self.request.GET.get('location', '').strip()
+        skill_level_query = self.request.GET.get('skill_level', '').strip()
+        date_query = self.request.GET.get('date', '').strip()
+
+        context['location_query'] = location_query
+        context['skill_level_query'] = skill_level_query
+        context['date_query'] = date_query
+        context['skill_level_choices'] = MatchSkillLevel.choices
+        context['is_filtered'] = bool(
+            location_query or skill_level_query or date_query
+        )
+        return context
 
 
 class MatchCreateView(LoginRequiredMixin, CreateView):

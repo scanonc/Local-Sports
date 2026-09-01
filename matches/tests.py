@@ -757,3 +757,138 @@ class MatchCancelViewTests(TestCase):
         self.assertNotContains(response, 'Cancel match')
 
 
+class MatchFilterListViewTests(TestCase):
+    """FR12 - Search and filtering of matches."""
+
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.base_time = timezone.now()
+
+        # Match 1: Active, Central Park, Beginner, Date: Day + 2
+        self.match_1 = Match.objects.create(
+            organizer=self.organizer,
+            title='Central Beginner Match',
+            date_time=self.base_time + timedelta(days=2),
+            location='Central Park Court 1',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+            status=MatchStatus.ACTIVE,
+        )
+
+        # Match 2: Active, Central Stadium, Intermediate, Date: Day + 4
+        self.match_2 = Match.objects.create(
+            organizer=self.organizer,
+            title='Central Intermediate Match',
+            date_time=self.base_time + timedelta(days=4),
+            location='Central Stadium',
+            skill_level='intermediate',
+            max_players=12,
+            visibility='public',
+            status=MatchStatus.ACTIVE,
+        )
+
+        # Match 3: Active, North Field, Advanced, Date: Day + 6
+        self.match_3 = Match.objects.create(
+            organizer=self.organizer,
+            title='North Advanced Match',
+            date_time=self.base_time + timedelta(days=6),
+            location='North Field Arena',
+            skill_level='advanced',
+            max_players=14,
+            visibility='public',
+            status=MatchStatus.ACTIVE,
+        )
+
+        # Match 4: Cancelled, Central Park, Beginner, Date: Day + 3
+        self.match_cancelled = Match.objects.create(
+            organizer=self.organizer,
+            title='Cancelled Central Match',
+            date_time=self.base_time + timedelta(days=3),
+            location='Central Park Court 2',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+            status=MatchStatus.CANCELLED,
+        )
+
+    def test_list_view_automatically_excludes_cancelled_matches(self):
+        response = self.client.get(reverse('matches:match_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Central Beginner Match')
+        self.assertContains(response, 'Central Intermediate Match')
+        self.assertContains(response, 'North Advanced Match')
+        self.assertNotContains(response, 'Cancelled Central Match')
+
+    def test_filter_by_location_partial_and_case_insensitive(self):
+        response = self.client.get(reverse('matches:match_list'), {'location': 'cEnTrAl'})
+        self.assertEqual(response.status_code, 200)
+        matches = list(response.context['matches'])
+        self.assertIn(self.match_1, matches)
+        self.assertIn(self.match_2, matches)
+        self.assertNotIn(self.match_3, matches)
+        self.assertNotIn(self.match_cancelled, matches)
+
+    def test_filter_by_skill_level_exact(self):
+        response = self.client.get(reverse('matches:match_list'), {'skill_level': 'intermediate'})
+        self.assertEqual(response.status_code, 200)
+        matches = list(response.context['matches'])
+        self.assertEqual(matches, [self.match_2])
+
+    def test_filter_by_date_from_gte(self):
+        filter_date = (self.base_time + timedelta(days=4)).strftime('%Y-%m-%d')
+        response = self.client.get(reverse('matches:match_list'), {'date': filter_date})
+        self.assertEqual(response.status_code, 200)
+        matches = list(response.context['matches'])
+        self.assertNotIn(self.match_1, matches)
+        self.assertIn(self.match_2, matches)
+        self.assertIn(self.match_3, matches)
+
+    def test_combined_filters(self):
+        filter_date = (self.base_time + timedelta(days=3)).strftime('%Y-%m-%d')
+        response = self.client.get(
+            reverse('matches:match_list'),
+            {
+                'location': 'central',
+                'skill_level': 'intermediate',
+                'date': filter_date,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        matches = list(response.context['matches'])
+        self.assertEqual(matches, [self.match_2])
+
+    def test_context_preserves_filter_parameters(self):
+        filter_date = (self.base_time + timedelta(days=2)).strftime('%Y-%m-%d')
+        response = self.client.get(
+            reverse('matches:match_list'),
+            {
+                'location': 'Central',
+                'skill_level': 'beginner',
+                'date': filter_date,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['location_query'], 'Central')
+        self.assertEqual(response.context['skill_level_query'], 'beginner')
+        self.assertEqual(response.context['date_query'], filter_date)
+        self.assertTrue(response.context['is_filtered'])
+        self.assertContains(response, 'value="Central"')
+        self.assertContains(response, 'selected>Beginner</option>')
+        self.assertContains(response, f'value="{filter_date}"')
+
+    def test_no_matches_found_shows_empty_filter_message(self):
+        response = self.client.get(
+            reverse('matches:match_list'),
+            {'location': 'NonExistentLocationXYZ'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No matches found matching your filter criteria.')
+        self.assertContains(response, 'Clear filters')
+
+
+
