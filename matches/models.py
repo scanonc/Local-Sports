@@ -53,6 +53,15 @@ class Match(models.Model):
 		if self.max_players is not None and self.max_players < 2:
 			errors['max_players'] = 'Maximum number of players must be at least 2.'
 
+		if self.pk is not None:
+			confirmed_count = self.participants.filter(
+				status=ParticipantStatus.CONFIRMED
+			).count()
+			if self.max_players is not None and self.max_players < confirmed_count:
+				errors['max_players'] = (
+					f'Maximum players cannot be less than {confirmed_count} confirmed participants.'
+				)
+
 		if errors:
 			raise ValidationError(errors)
 
@@ -161,3 +170,16 @@ class JoinRequest(models.Model):
         choices=JoinRequestStatus.choices,
         default=JoinRequestStatus.PENDING,
     )
+
+    class Meta:
+        ordering = ['-request_date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['match', 'player'],
+                condition=models.Q(request_status=JoinRequestStatus.PENDING),
+                name='unique_pending_join_request',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.player} -> {self.match} ({self.request_status})'
