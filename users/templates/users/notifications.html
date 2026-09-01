@@ -1,0 +1,29 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h2 class="mb-3">Notifications</h2>
+
+        {% if notifications %}
+            <div class="list-group">
+                {% for notification in notifications %}
+                    <a href="{% url 'users:mark_notification_read' notification.pk %}" class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-warning{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-semibold">{{ notification.message }}</div>
+                                <small class="text-muted">{{ notification.created_at|date:'d M Y, H:i' }}</small>
+                            </div>
+                            {% if not notification.is_read %}
+                                <span class="badge bg-primary rounded-pill">New</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-light border">You have no notifications.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

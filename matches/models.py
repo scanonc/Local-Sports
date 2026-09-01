@@ -16,6 +16,11 @@ class MatchVisibility(models.TextChoices):
 	APPROVAL_REQUIRED = 'approval_required', 'Approval required'
 
 
+class MatchStatus(models.TextChoices):
+	ACTIVE = 'active', 'Active'
+	CANCELLED = 'cancelled', 'Cancelled'
+
+
 class Match(models.Model):
 	organizer = models.ForeignKey(
 		settings.AUTH_USER_MODEL,
@@ -31,6 +36,11 @@ class Match(models.Model):
 		max_length=20,
 		choices=MatchVisibility.choices,
 		default=MatchVisibility.PUBLIC,
+	)
+	status = models.CharField(
+		max_length=20,
+		choices=MatchStatus.choices,
+		default=MatchStatus.ACTIVE,
 	)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
@@ -80,6 +90,10 @@ class Match(models.Model):
 	@property
 	def has_started(self):
 		return self.date_time < timezone.now()
+
+	@property
+	def is_cancelled(self):
+		return self.status == MatchStatus.CANCELLED
 
 	@property
 	def waiting_participants(self):

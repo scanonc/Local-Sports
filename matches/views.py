@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -12,9 +14,12 @@ from .models import (
     JoinRequestStatus,
     Match,
     MatchParticipant,
+    MatchSkillLevel,
+    MatchStatus,
     MatchVisibility,
     ParticipantStatus,
 )
+from .services import notify_match_cancellation
 
 
 class MatchDetailView(DetailView):
@@ -77,9 +82,47 @@ class MatchDetailView(DetailView):
 
 
 class MatchListView(ListView):
+    """FR3 & FR12 - Browse and filter active matches."""
+
     model = Match
     template_name = 'matches/match_list.html'
     context_object_name = 'matches'
+
+    def get_queryset(self):
+        queryset = Match.objects.filter(status=MatchStatus.ACTIVE)
+
+        location = self.request.GET.get('location', '').strip()
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+
+        skill_level = self.request.GET.get('skill_level', '').strip()
+        if skill_level and skill_level in MatchSkillLevel.values:
+            queryset = queryset.filter(skill_level=skill_level)
+
+        date_str = self.request.GET.get('date', '').strip()
+        if date_str:
+            try:
+                filter_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                queryset = queryset.filter(date_time__date__gte=filter_date)
+            except ValueError:
+                pass
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        location_query = self.request.GET.get('location', '').strip()
+        skill_level_query = self.request.GET.get('skill_level', '').strip()
+        date_query = self.request.GET.get('date', '').strip()
+
+        context['location_query'] = location_query
+        context['skill_level_query'] = skill_level_query
+        context['date_query'] = date_query
+        context['skill_level_choices'] = MatchSkillLevel.choices
+        context['is_filtered'] = bool(
+            location_query or skill_level_query or date_query
+        )
+        return context
 
 
 class MatchCreateView(LoginRequiredMixin, CreateView):
@@ -100,6 +143,13 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
     def get_queryset(self):
         return Match.objects.filter(organizer=self.request.user)
 
+    def dispatch(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.status == MatchStatus.CANCELLED:
+            messages.error(request, 'Cancelled matches cannot be edited.')
+            return redirect('matches:match_detail', pk=obj.pk)
+        return super().dispatch(request, *args, **kwargs)
+
     def form_valid(self, form):
         """FR11 - Automatic replacement.
 
@@ -109,6 +159,29 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
         response = super().form_valid(form)
         self.object.promote_from_waiting_list()
         return response
+
+
+class MatchCancelView(LoginRequiredMixin, View):
+    """FR9 - Cancel match by organizer."""
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id != request.user.id:
+            messages.error(request, 'Only the organizer can cancel this match.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.status == MatchStatus.CANCELLED:
+            messages.warning(request, 'This match is already cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        match.status = MatchStatus.CANCELLED
+        match.save(update_fields=['status', 'updated_at'])
+
+        notify_match_cancellation(request, match)
+        messages.success(request, 'The match has been cancelled successfully.')
+
+        return redirect('matches:match_detail', pk=match.pk)
 
 
 class MatchJoinView(LoginRequiredMixin, View):
@@ -126,6 +199,10 @@ class MatchJoinView(LoginRequiredMixin, View):
             messages.error(request, 'You are the organizer of this match.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(request, 'This match has been cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.visibility != MatchVisibility.PUBLIC:
             messages.error(
                 request,
@@ -139,6 +216,10 @@ class MatchJoinView(LoginRequiredMixin, View):
 
         with transaction.atomic():
             match = Match.objects.select_for_update().get(pk=pk)
+
+            if match.status == MatchStatus.CANCELLED:
+                messages.error(request, 'This match has been cancelled.')
+                return redirect('matches:match_detail', pk=match.pk)
 
             if match.visibility != MatchVisibility.PUBLIC:
                 messages.error(
@@ -213,6 +294,10 @@ class MatchRequestJoinView(LoginRequiredMixin, View):
             messages.error(request, 'You are the organizer of this match.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(request, 'This match has been cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.visibility != MatchVisibility.APPROVAL_REQUIRED:
             messages.error(
                 request,
@@ -284,6 +369,13 @@ class MatchRequestAcceptView(LoginRequiredMixin, View):
             messages.error(
                 request,
                 'Only the organizer can accept join requests.',
+            )
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(
+                request,
+                'This match has been cancelled.',
             )
             return redirect('matches:match_detail', pk=match.pk)
 

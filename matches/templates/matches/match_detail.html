@@ -5,8 +5,24 @@
     <div class="col-lg-8">
         <div class="card shadow-sm">
             <div class="card-body p-4">
+                {% if match.status == 'cancelled' %}
+                <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+                    <div>
+                        <strong>Notice:</strong> This match has been cancelled by the organizer. No further actions can be taken.
+                    </div>
+                </div>
+                {% endif %}
+
                 <h1 class="h3 mb-3">{{ match.title }}</h1>
                 <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if match.status == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                        {% else %}
+                        <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </dd>
                     <dt class="col-sm-4">Date and time</dt>
                     <dd class="col-sm-8">{{ match.date_time }}</dd>
                     <dt class="col-sm-4">Location</dt>
@@ -26,9 +42,15 @@
                 </dl>
 
                 <div class="d-flex flex-wrap gap-2 mt-3">
-                    {% if user_is_organizer %}
+                    {% if match.status == 'cancelled' %}
+                    <span class="align-self-center text-muted">This match is cancelled.</span>
+                    {% elif user_is_organizer %}
                     <a class="btn btn-outline-primary" href="{% url 'matches:match_update' match.pk %}">Edit match</a>
-                    <span class="align-self-center text-muted">You are the organizer of this match.</span>
+                    <form method="post" action="{% url 'matches:match_cancel' match.pk %}" onsubmit="return confirm('Are you sure you want to cancel this match? Confirmed participants will be notified and this action cannot be undone.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger">Cancel match</button>
+                    </form>
+                    <span class="align-self-center text-muted ms-2">You are the organizer of this match.</span>
                     {% elif user.is_authenticated %}
                         {% if user_is_participant %}
                         <form method="post" action="{% url 'matches:match_leave' match.pk %}">
@@ -68,7 +90,7 @@
                     {% endif %}
                 </div>
                 
-                {% if user_is_organizer and pending_join_requests %}
+                {% if match.status != 'cancelled' and user_is_organizer and pending_join_requests %}
                 <hr class="my-4">
 
                 <h2 class="h5 mb-3">Join requests</h2>
@@ -105,7 +127,7 @@
                 </div>
                 {% endif %}
 
-                {% if user_is_organizer and waiting_list %}
+                {% if match.status != 'cancelled' and user_is_organizer and waiting_list %}
                 <hr class="my-4">
 
                 <h2 class="h5 mb-3">Waiting list</h2>
