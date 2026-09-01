@@ -8,13 +8,14 @@ class MatchAdmin(admin.ModelAdmin):
 	list_display = (
 		'title',
 		'organizer',
+		'status',
 		'date_time',
 		'location',
 		'skill_level',
 		'max_players',
 		'visibility',
 	)
-	list_filter = ('visibility', 'skill_level', 'date_time')
+	list_filter = ('status', 'visibility', 'skill_level', 'date_time')
 	search_fields = ('title', 'location', 'organizer__username', 'organizer__email')
 	ordering = ('date_time',)
 	readonly_fields = ('created_at', 'updated_at')

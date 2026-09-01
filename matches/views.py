@@ -12,9 +12,11 @@ from .models import (
     JoinRequestStatus,
     Match,
     MatchParticipant,
+    MatchStatus,
     MatchVisibility,
     ParticipantStatus,
 )
+from .services import notify_match_cancellation
 
 
 class MatchDetailView(DetailView):
@@ -100,6 +102,13 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
     def get_queryset(self):
         return Match.objects.filter(organizer=self.request.user)
 
+    def dispatch(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.status == MatchStatus.CANCELLED:
+            messages.error(request, 'Cancelled matches cannot be edited.')
+            return redirect('matches:match_detail', pk=obj.pk)
+        return super().dispatch(request, *args, **kwargs)
+
     def form_valid(self, form):
         """FR11 - Automatic replacement.
 
@@ -109,6 +118,29 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
         response = super().form_valid(form)
         self.object.promote_from_waiting_list()
         return response
+
+
+class MatchCancelView(LoginRequiredMixin, View):
+    """FR9 - Cancel match by organizer."""
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id != request.user.id:
+            messages.error(request, 'Only the organizer can cancel this match.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.status == MatchStatus.CANCELLED:
+            messages.warning(request, 'This match is already cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        match.status = MatchStatus.CANCELLED
+        match.save(update_fields=['status', 'updated_at'])
+
+        notify_match_cancellation(request, match)
+        messages.success(request, 'The match has been cancelled successfully.')
+
+        return redirect('matches:match_detail', pk=match.pk)
 
 
 class MatchJoinView(LoginRequiredMixin, View):
@@ -126,6 +158,10 @@ class MatchJoinView(LoginRequiredMixin, View):
             messages.error(request, 'You are the organizer of this match.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(request, 'This match has been cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.visibility != MatchVisibility.PUBLIC:
             messages.error(
                 request,
@@ -139,6 +175,10 @@ class MatchJoinView(LoginRequiredMixin, View):
 
         with transaction.atomic():
             match = Match.objects.select_for_update().get(pk=pk)
+
+            if match.status == MatchStatus.CANCELLED:
+                messages.error(request, 'This match has been cancelled.')
+                return redirect('matches:match_detail', pk=match.pk)
 
             if match.visibility != MatchVisibility.PUBLIC:
                 messages.error(
@@ -213,6 +253,10 @@ class MatchRequestJoinView(LoginRequiredMixin, View):
             messages.error(request, 'You are the organizer of this match.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(request, 'This match has been cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.visibility != MatchVisibility.APPROVAL_REQUIRED:
             messages.error(
                 request,
@@ -284,6 +328,13 @@ class MatchRequestAcceptView(LoginRequiredMixin, View):
             messages.error(
                 request,
                 'Only the organizer can accept join requests.',
+            )
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(
+                request,
+                'This match has been cancelled.',
             )
             return redirect('matches:match_detail', pk=match.pk)
 

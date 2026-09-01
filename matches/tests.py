@@ -8,7 +8,14 @@ from django.test import TestCase
 from django.utils import timezone
 
 from .forms import MatchForm
-from .models import JoinRequest, JoinRequestStatus, Match, MatchParticipant, ParticipantStatus
+from .models import (
+    JoinRequest,
+    JoinRequestStatus,
+    Match,
+    MatchParticipant,
+    MatchStatus,
+    ParticipantStatus,
+)
 
 
 User = get_user_model()
@@ -566,4 +573,187 @@ class AutomaticReplacementTests(TestCase):
         player_c = MatchParticipant.objects.get(match=self.match, player=self.player_c)
         self.assertEqual(player_b.status, ParticipantStatus.CONFIRMED)
         self.assertEqual(player_c.status, ParticipantStatus.WAITING)
+
+
+class MatchCancelViewTests(TestCase):
+    """FR9 - Cancel match and notification tests."""
+
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.player_one = User.objects.create_user(
+            username='player_one',
+            email='player1@example.com',
+            password='testpass123',
+        )
+        self.player_two = User.objects.create_user(
+            username='player_two',
+            email='player2@example.com',
+            password='testpass123',
+        )
+        self.other_user = User.objects.create_user(
+            username='other_user',
+            email='other@example.com',
+            password='testpass123',
+        )
+        self.match = Match.objects.create(
+            organizer=self.organizer,
+            title='Weekend Cup Match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Central Stadium',
+            skill_level='intermediate',
+            max_players=10,
+            visibility='public',
+        )
+
+    def test_default_status_is_active(self):
+        self.assertEqual(self.match.status, MatchStatus.ACTIVE)
+        self.assertFalse(self.match.is_cancelled)
+
+    def test_cancel_requires_login(self):
+        response = self.client.post(
+            reverse('matches:match_cancel', kwargs={'pk': self.match.pk})
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+
+    def test_only_organizer_can_cancel_match(self):
+        self.client.login(username='other_user', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_cancel', kwargs={'pk': self.match.pk})
+        )
+        self.assertRedirects(
+            response, reverse('matches:match_detail', kwargs={'pk': self.match.pk})
+        )
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.ACTIVE)
+
+    def test_organizer_can_cancel_match_and_status_becomes_cancelled(self):
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_cancel', kwargs={'pk': self.match.pk})
+        )
+        self.assertRedirects(
+            response, reverse('matches:match_detail', kwargs={'pk': self.match.pk})
+        )
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.CANCELLED)
+        self.assertTrue(self.match.is_cancelled)
+
+    def test_cannot_cancel_already_cancelled_match(self):
+        self.match.status = MatchStatus.CANCELLED
+        self.match.save(update_fields=['status'])
+
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_cancel', kwargs={'pk': self.match.pk})
+        )
+        self.assertRedirects(
+            response, reverse('matches:match_detail', kwargs={'pk': self.match.pk})
+        )
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.CANCELLED)
+
+    def test_cancellation_triggers_notification_and_logs(self):
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=self.player_one,
+            status=ParticipantStatus.CONFIRMED,
+        )
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=self.player_two,
+            status=ParticipantStatus.CONFIRMED,
+        )
+
+        self.client.login(username='organizer', password='testpass123')
+
+        with self.assertLogs('matches.services', level='INFO') as log:
+            response = self.client.post(
+                reverse('matches:match_cancel', kwargs={'pk': self.match.pk}),
+                follow=True,
+            )
+
+        self.assertIn('Weekend Cup Match', log.output[0])
+        self.assertIn('player_one', log.output[0])
+        self.assertIn('player_two', log.output[0])
+        self.assertContains(response, 'The match has been cancelled successfully.')
+        self.assertContains(response, 'Notification sent to 2 confirmed participant(s)')
+
+    def test_cancellation_with_no_participants_notifies_correctly(self):
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_cancel', kwargs={'pk': self.match.pk}),
+            follow=True,
+        )
+        self.assertContains(response, 'No confirmed participants to notify.')
+
+    def test_cannot_join_cancelled_match(self):
+        self.match.status = MatchStatus.CANCELLED
+        self.match.save(update_fields=['status'])
+
+        self.client.login(username='player_one', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join', kwargs={'pk': self.match.pk}),
+            follow=True,
+        )
+        self.assertContains(response, 'This match has been cancelled.')
+        self.assertFalse(
+            MatchParticipant.objects.filter(
+                match=self.match, player=self.player_one
+            ).exists()
+        )
+
+    def test_cannot_request_join_cancelled_match(self):
+        approval_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Approval Cancelled Match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Central Stadium',
+            skill_level='intermediate',
+            max_players=10,
+            visibility='approval_required',
+            status=MatchStatus.CANCELLED,
+        )
+
+        self.client.login(username='player_one', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_request_join', kwargs={'pk': approval_match.pk}),
+            follow=True,
+        )
+        self.assertContains(response, 'This match has been cancelled.')
+        self.assertFalse(
+            JoinRequest.objects.filter(
+                match=approval_match, player=self.player_one
+            ).exists()
+        )
+
+    def test_cannot_edit_cancelled_match(self):
+        self.match.status = MatchStatus.CANCELLED
+        self.match.save(update_fields=['status'])
+
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.get(
+            reverse('matches:match_update', kwargs={'pk': self.match.pk}),
+            follow=True,
+        )
+        self.assertContains(response, 'Cancelled matches cannot be edited.')
+
+    def test_match_detail_shows_cancelled_banner_and_disables_actions(self):
+        self.match.status = MatchStatus.CANCELLED
+        self.match.save(update_fields=['status'])
+
+        self.client.login(username='player_one', password='testpass123')
+        response = self.client.get(
+            reverse('matches:match_detail', kwargs={'pk': self.match.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This match has been cancelled by the organizer.')
+        self.assertContains(response, 'Cancelled')
+        self.assertNotContains(response, 'Join match')
+        self.assertNotContains(response, 'Cancel match')
+
 
