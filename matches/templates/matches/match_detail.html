@@ -41,25 +41,27 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-danger">Leave waiting list</button>
                         </form>
-                        {% elif match.visibility == 'public' and not match.has_started and not match.is_full %}
-                        <form method="post" action="{% url 'matches:match_join' match.pk %}">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-primary">Join match</button>
-                        </form>
-                        {% elif match.visibility == 'public' and not match.has_started and match.is_full %}
+                        {% elif match.has_started %}
+                        <span class="align-self-center text-muted">This match has already started.</span>
+                        {% elif match.visibility == 'public' and match.is_full %}
                         <form method="post" action="{% url 'matches:match_join' match.pk %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-warning">Join waiting list</button>
                         </form>
-                        {% elif match.visibility == 'approval_required' and not match.has_started %}
+                        {% elif match.visibility == 'public' %}
+                        <form method="post" action="{% url 'matches:match_join' match.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary">Join match</button>
+                        </form>
+                        {% elif match.visibility == 'approval_required' and match.is_full %}
+                        <span class="align-self-center text-muted">This match is full.</span>
+                        {% elif match.visibility == 'approval_required' and user_has_pending_request %}
+                        <span class="align-self-center text-muted">Your request is pending organizer approval.</span>
+                        {% elif match.visibility == 'approval_required' %}
                         <form method="post" action="{% url 'matches:match_request_join' match.pk %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-primary">Request to join</button>
                         </form>
-                        {% elif match.has_started %}
-                        <span class="align-self-center text-muted">This match has already started.</span>
-                        {% elif match.is_full %}
-                        <span class="align-self-center text-muted">This match is full.</span>
                         {% endif %}
                     {% else %}
                     <a class="btn btn-primary" href="{% url 'users:login' %}?next={{ request.path }}">Login to join</a>

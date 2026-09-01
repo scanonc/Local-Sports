@@ -29,6 +29,16 @@
                         {{ form.skill_level }}
                         {{ form.skill_level.errors }}
                     </div>
+
+                    {% if not object %}
+                    <div class="form-check mb-4">
+                        {{ form.join_as_player }}
+                        <label class="form-check-label" for="{{ form.join_as_player.id_for_label }}">
+                            I want to participate as a player in this match
+                        </label>
+                        {{ form.join_as_player.errors }}
+                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         <label class="form-label" for="{{ form.max_players.id_for_label }}">Maximum players</label>
                         {{ form.max_players }}

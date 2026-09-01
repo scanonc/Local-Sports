@@ -2,12 +2,13 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.urls import reverse
 from django.test import TestCase
 from django.utils import timezone
 
 from .forms import MatchForm
-from .models import Match, MatchParticipant, ParticipantStatus
+from .models import JoinRequest, JoinRequestStatus, Match, MatchParticipant, ParticipantStatus
 
 
 User = get_user_model()
@@ -308,6 +309,101 @@ class MatchLeaveViewTests(TestCase):
         self.assertFalse(MatchParticipant.objects.filter(match=self.match, player=self.player).exists())
 
 
+class MatchValidationRegressionTests(TestCase):
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.player_one = User.objects.create_user(
+            username='player_one',
+            email='player_one@example.com',
+            password='testpass123',
+        )
+        self.player_two = User.objects.create_user(
+            username='player_two',
+            email='player_two@example.com',
+            password='testpass123',
+        )
+
+    def test_model_rejects_max_players_below_confirmed_participants(self):
+        match = Match.objects.create(
+            organizer=self.organizer,
+            title='Capacity Validation Match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Local field',
+            skill_level='beginner',
+            max_players=3,
+            visibility='public',
+        )
+        MatchParticipant.objects.create(
+            match=match,
+            player=self.player_one,
+            status=ParticipantStatus.CONFIRMED,
+        )
+        MatchParticipant.objects.create(
+            match=match,
+            player=self.player_two,
+            status=ParticipantStatus.CONFIRMED,
+        )
+
+        match.max_players = 1
+
+        with self.assertRaises(ValidationError):
+            match.full_clean()
+
+    def test_save_rejects_invalid_capacity_when_editing_match(self):
+        match = Match.objects.create(
+            organizer=self.organizer,
+            title='Edit Capacity Match',
+            date_time=timezone.now() + timedelta(days=3),
+            location='Local field',
+            skill_level='beginner',
+            max_players=4,
+            visibility='public',
+        )
+        MatchParticipant.objects.create(
+            match=match,
+            player=self.player_one,
+            status=ParticipantStatus.CONFIRMED,
+        )
+        MatchParticipant.objects.create(
+            match=match,
+            player=self.player_two,
+            status=ParticipantStatus.CONFIRMED,
+        )
+
+        match.max_players = 1
+
+        with self.assertRaises(ValidationError):
+            match.save()
+
+    def test_pending_join_request_unique_constraint_avoids_duplicates(self):
+        match = Match.objects.create(
+            organizer=self.organizer,
+            title='Request Validation Match',
+            date_time=timezone.now() + timedelta(days=4),
+            location='Local field',
+            skill_level='beginner',
+            max_players=5,
+            visibility='approval_required',
+        )
+
+        JoinRequest.objects.create(
+            match=match,
+            player=self.player_one,
+            request_status=JoinRequestStatus.PENDING,
+        )
+
+        with self.assertRaises(IntegrityError):
+            JoinRequest.objects.create(
+                match=match,
+                player=self.player_one,
+                request_status=JoinRequestStatus.PENDING,
+            )
+
+
 class WaitingListTests(TestCase):
     """FR10 - Waiting list."""
 
@@ -470,3 +566,4 @@ class AutomaticReplacementTests(TestCase):
         player_c = MatchParticipant.objects.get(match=self.match, player=self.player_c)
         self.assertEqual(player_b.status, ParticipantStatus.CONFIRMED)
         self.assertEqual(player_c.status, ParticipantStatus.WAITING)
+
