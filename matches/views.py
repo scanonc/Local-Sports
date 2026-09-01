@@ -40,11 +40,28 @@ class MatchDetailView(DetailView):
             ).exists()
         )
 
+        waiting_participant = None
+        if user.is_authenticated:
+            waiting_participant = MatchParticipant.objects.filter(
+                match=self.object,
+                player=user,
+                status=ParticipantStatus.WAITING,
+            ).first()
+
+        context['user_is_waiting'] = waiting_participant is not None
+        if waiting_participant:
+            context['user_waiting_position'] = self.object.waiting_participants.filter(
+                updated_at__lte=waiting_participant.updated_at
+            ).count()
+
+        context['waiting_list_count'] = self.object.waiting_list_count
+
         if user_is_organizer:
             context['pending_join_requests'] = JoinRequest.objects.filter(
                 match=self.object,
                 request_status=JoinRequestStatus.PENDING,
             ).select_related('player')
+            context['waiting_list'] = self.object.waiting_participants.select_related('player')
 
         return context
 
@@ -73,14 +90,22 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
     def get_queryset(self):
         return Match.objects.filter(organizer=self.request.user)
 
+    def form_valid(self, form):
+        """FR11 - Automatic replacement.
+
+        If the organizer increases max_players, promote waiting players
+        into the newly opened spots right away.
+        """
+        response = super().form_valid(form)
+        self.object.promote_from_waiting_list()
+        return response
+
 
 class MatchJoinView(LoginRequiredMixin, View):
     """FR5 - Join public match.
 
-    A player joins a match directly, without organizer approval, as long
-    as the match is public, has not started yet, still has room, and the
-    player is not the organizer or already an active participant.
-    Matches that require approval are out of scope here (see FR4).
+    FR10 - Waiting list: if the match is public but already full, the
+    player is placed on the waiting list instead of being turned away.
     """
 
     def post(self, request, pk):
@@ -107,8 +132,29 @@ class MatchJoinView(LoginRequiredMixin, View):
             messages.info(request, 'You already joined this match.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if participant and participant.status == ParticipantStatus.WAITING:
+            messages.info(request, 'You are already on the waiting list for this match.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.is_full:
-            messages.error(request, 'This match is already full.')
+            if participant:
+                participant.status = ParticipantStatus.WAITING
+                participant.save(update_fields=['status', 'updated_at'])
+            else:
+                participant = MatchParticipant.objects.create(
+                    match=match,
+                    player=request.user,
+                    status=ParticipantStatus.WAITING,
+                )
+
+            position = match.waiting_participants.filter(
+                updated_at__lte=participant.updated_at
+            ).count()
+
+            messages.info(
+                request,
+                f'This match is full. You have been added to the waiting list (position {position}).',
+            )
             return redirect('matches:match_detail', pk=match.pk)
 
         if participant:
@@ -272,26 +318,34 @@ class MatchRequestRejectView(LoginRequiredMixin, View):
         return redirect('matches:match_detail', pk=match.pk)
     
 class MatchLeaveView(LoginRequiredMixin, View):
-    """FR6 - Leave match.
+    """FR6 - Leave match (also used to leave the waiting list).
 
-    A confirmed participant can leave a match they previously joined. The
-    participant row is kept and its status is set to LEFT instead of being
-    deleted, so historical information is preserved.
+    FR11 - Automatic replacement: if a confirmed spot is freed, the
+    longest-waiting player on the waiting list is promoted automatically.
     """
 
     def post(self, request, pk):
         match = get_object_or_404(Match, pk=pk)
 
         participant = MatchParticipant.objects.filter(
-            match=match, player=request.user, status=ParticipantStatus.CONFIRMED
+            match=match,
+            player=request.user,
+            status__in=[ParticipantStatus.CONFIRMED, ParticipantStatus.WAITING],
         ).first()
 
         if not participant:
             messages.error(request, 'You are not currently part of this match.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        was_confirmed = participant.status == ParticipantStatus.CONFIRMED
+
         participant.status = ParticipantStatus.LEFT
         participant.save(update_fields=['status', 'updated_at'])
 
-        messages.success(request, 'You have left the match.')
+        if was_confirmed:
+            match.promote_from_waiting_list()
+            messages.success(request, 'You have left the match.')
+        else:
+            messages.success(request, 'You have left the waiting list.')
+
         return redirect('matches:match_detail', pk=match.pk)
