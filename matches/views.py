@@ -72,7 +72,6 @@ class MatchDetailView(DetailView):
         context['waiting_list_count'] = self.object.waiting_list_count
         context['attendance_participants'] = self.object.participants.filter(
             status=ParticipantStatus.CONFIRMED,
-            attendance_confirmed=True,
         ).select_related('player')
 
         context['user_has_confirmed_attendance'] = (

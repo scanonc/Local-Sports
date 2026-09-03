@@ -362,7 +362,7 @@ class MatchAttendanceViewTests(TestCase):
             ).exists()
         )
 
-    def test_detail_shows_only_confirmed_attendees_for_this_match(self):
+    def test_detail_shows_participants_and_attendance_status_for_this_match(self):
         other_match = Match.objects.create(
             organizer=self.organizer,
             title='Other Match',
@@ -393,6 +393,8 @@ class MatchAttendanceViewTests(TestCase):
         response = self.client.get(reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
 
         self.assertContains(response, 'player')
+        self.assertContains(response, 'Pending Confirmation')
+        self.assertContains(response, 'Attendance confirmed')
         self.assertNotContains(response, 'other_player')
 
 
