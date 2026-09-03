@@ -258,6 +258,144 @@ class MatchJoinViewTests(TestCase):
         )
 
 
+class MatchAttendanceViewTests(TestCase):
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.player = User.objects.create_user(
+            username='player',
+            email='player@example.com',
+            password='testpass123',
+        )
+        self.match = Match.objects.create(
+            organizer=self.organizer,
+            title='Attendance Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+        )
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=self.player,
+            status=ParticipantStatus.CONFIRMED,
+        )
+
+    def test_confirmed_player_can_confirm_attendance(self):
+        self.client.login(username='player', password='testpass123')
+
+        response = self.client.post(
+            reverse('matches:match_attendance', kwargs={'pk': self.match.pk})
+        )
+
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+        self.assertTrue(
+            MatchParticipant.objects.get(
+                match=self.match,
+                player=self.player,
+            ).attendance_confirmed
+        )
+
+    def test_confirm_attendance_is_idempotently_rejected(self):
+        participant = MatchParticipant.objects.get(match=self.match, player=self.player)
+        participant.attendance_confirmed = True
+        participant.save(update_fields=['attendance_confirmed'])
+        self.client.login(username='player', password='testpass123')
+
+        self.client.post(reverse('matches:match_attendance', kwargs={'pk': self.match.pk}))
+
+        self.assertEqual(
+            MatchParticipant.objects.filter(
+                match=self.match,
+                player=self.player,
+                attendance_confirmed=True,
+            ).count(),
+            1,
+        )
+
+    def test_rejoining_after_leaving_requires_new_attendance_confirmation(self):
+        participant = MatchParticipant.objects.get(match=self.match, player=self.player)
+        participant.attendance_confirmed = True
+        participant.save(update_fields=['attendance_confirmed'])
+
+        self.client.login(username='player', password='testpass123')
+        self.client.post(reverse('matches:match_leave', kwargs={'pk': self.match.pk}))
+
+        participant.refresh_from_db()
+        self.assertFalse(participant.attendance_confirmed)
+
+        join_request = JoinRequest.objects.create(
+            match=self.match,
+            player=self.player,
+        )
+        self.client.login(username='organizer', password='testpass123')
+        self.client.post(
+            reverse(
+                'matches:match_request_accept',
+                kwargs={'pk': self.match.pk, 'request_id': join_request.pk},
+            )
+        )
+
+        participant.refresh_from_db()
+        self.assertEqual(participant.status, ParticipantStatus.CONFIRMED)
+        self.assertFalse(participant.attendance_confirmed)
+
+    def test_unconfirmed_player_cannot_confirm_attendance(self):
+        other_player = User.objects.create_user(
+            username='other_player',
+            email='other_player@example.com',
+            password='testpass123',
+        )
+        self.client.login(username='other_player', password='testpass123')
+
+        self.client.post(reverse('matches:match_attendance', kwargs={'pk': self.match.pk}))
+
+        self.assertFalse(
+            MatchParticipant.objects.filter(
+                match=self.match,
+                player=other_player,
+                attendance_confirmed=True,
+            ).exists()
+        )
+
+    def test_detail_shows_only_confirmed_attendees_for_this_match(self):
+        other_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Other Match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Other field',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+        )
+        other_player = User.objects.create_user(
+            username='other_player',
+            email='other_player@example.com',
+            password='testpass123',
+        )
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=other_player,
+            status=ParticipantStatus.CONFIRMED,
+            attendance_confirmed=False,
+        )
+        MatchParticipant.objects.create(
+            match=other_match,
+            player=other_player,
+            status=ParticipantStatus.CONFIRMED,
+            attendance_confirmed=True,
+        )
+
+        response = self.client.get(reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+
+        self.assertContains(response, 'player')
+        self.assertNotContains(response, 'other_player')
+
+
 class MatchLeaveViewTests(TestCase):
     def setUp(self):
         self.organizer = User.objects.create_user(

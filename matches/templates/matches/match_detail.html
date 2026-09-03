@@ -57,6 +57,14 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-danger">Leave match</button>
                         </form>
+                        {% if user_has_confirmed_attendance %}
+                        <span class="align-self-center text-success">Attendance confirmed.</span>
+                        {% else %}
+                        <form method="post" action="{% url 'matches:match_attendance' match.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">Confirm attendance</button>
+                        </form>
+                        {% endif %}
                         {% elif user_is_waiting %}
                         <span class="align-self-center text-muted">You are #{{ user_waiting_position }} on the waiting list.</span>
                         <form method="post" action="{% url 'matches:match_leave' match.pk %}">
@@ -125,6 +133,19 @@
                     </div>
                     {% endfor %}
                 </div>
+                {% endif %}
+
+                <hr class="my-4">
+
+                <h2 class="h5 mb-3">Confirmed attendees</h2>
+                {% if attendance_participants %}
+                <ul class="list-group">
+                    {% for participant in attendance_participants %}
+                    <li class="list-group-item">{{ participant.player }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">No players have confirmed attendance yet.</p>
                 {% endif %}
 
                 {% if match.status != 'cancelled' and user_is_organizer and waiting_list %}
