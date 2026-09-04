@@ -9,6 +9,17 @@ from .models import ParticipantStatus
 logger = logging.getLogger(__name__)
 
 
+def notify_attendance_confirmation(match, player):
+    """Notify the organizer that a participant confirmed attendance."""
+    Notification.objects.create(
+        user=match.organizer,
+        match=match,
+        message=(
+            f'{player} confirmed attendance for the match "{match.title}".'
+        ),
+    )
+
+
 def notify_match_cancellation(request, match):
     """FR9 - Internal notification service for match cancellation.
 

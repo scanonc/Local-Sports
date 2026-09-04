@@ -19,7 +19,7 @@ from .models import (
     MatchVisibility,
     ParticipantStatus,
 )
-from .services import notify_match_cancellation
+from .services import notify_attendance_confirmation, notify_match_cancellation
 
 
 class MatchDetailView(DetailView):
@@ -70,6 +70,19 @@ class MatchDetailView(DetailView):
             ).count()
 
         context['waiting_list_count'] = self.object.waiting_list_count
+        context['attendance_participants'] = self.object.participants.filter(
+            status=ParticipantStatus.CONFIRMED,
+        ).select_related('player')
+
+        context['user_has_confirmed_attendance'] = (
+            user.is_authenticated
+            and MatchParticipant.objects.filter(
+                match=self.object,
+                player=user,
+                status=ParticipantStatus.CONFIRMED,
+                attendance_confirmed=True,
+            ).exists()
+        )
 
         if user_is_organizer:
             context['pending_join_requests'] = JoinRequest.objects.filter(
@@ -284,6 +297,51 @@ class MatchJoinView(LoginRequiredMixin, View):
         return redirect('matches:match_detail', pk=match.pk)
 
 
+class MatchAttendanceView(LoginRequiredMixin, View):
+    """FR1 - Confirm attendance for a match the player has joined."""
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id == request.user.id:
+            messages.error(request, 'The organizer cannot confirm attendance.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(request, 'This match has been cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.has_started:
+            messages.error(
+                request,
+                'Attendance cannot be confirmed after the match has started.',
+            )
+            return redirect('matches:match_detail', pk=match.pk)
+
+        try:
+            participant = MatchParticipant.objects.get(
+                match=match,
+                player=request.user,
+                status=ParticipantStatus.CONFIRMED,
+            )
+        except MatchParticipant.DoesNotExist:
+            messages.error(
+                request,
+                'Only confirmed participants can confirm attendance.',
+            )
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if participant.attendance_confirmed:
+            messages.info(request, 'You have already confirmed attendance.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        participant.attendance_confirmed = True
+        participant.save(update_fields=['attendance_confirmed', 'updated_at'])
+        notify_attendance_confirmation(match, request.user)
+        messages.success(request, 'Your attendance has been confirmed.')
+        return redirect('matches:match_detail', pk=match.pk)
+
+
 class MatchRequestJoinView(LoginRequiredMixin, View):
     """FR4 - Request to join a match that requires organizer approval."""
 
@@ -425,7 +483,10 @@ class MatchRequestAcceptView(LoginRequiredMixin, View):
             if participant:
                 if participant.status != ParticipantStatus.CONFIRMED:
                     participant.status = ParticipantStatus.CONFIRMED
-                    participant.save(update_fields=['status', 'updated_at'])
+                    participant.attendance_confirmed = False
+                    participant.save(
+                        update_fields=['status', 'attendance_confirmed', 'updated_at']
+                    )
             else:
                 MatchParticipant.objects.create(
                     match=match,
@@ -496,7 +557,10 @@ class MatchLeaveView(LoginRequiredMixin, View):
         was_confirmed = participant.status == ParticipantStatus.CONFIRMED
 
         participant.status = ParticipantStatus.LEFT
-        participant.save(update_fields=['status', 'updated_at'])
+        participant.attendance_confirmed = False
+        participant.save(
+            update_fields=['status', 'attendance_confirmed', 'updated_at']
+        )
 
         if was_confirmed:
             match.promote_from_waiting_list()
