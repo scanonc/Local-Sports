@@ -7,6 +7,8 @@ from django.urls import reverse
 from django.test import TestCase
 from django.utils import timezone
 
+from users.models import Notification
+
 from .forms import MatchForm
 from .models import (
     JoinRequest,
@@ -300,6 +302,20 @@ class MatchAttendanceViewTests(TestCase):
             ).attendance_confirmed
         )
 
+    def test_confirming_attendance_notifies_match_organizer(self):
+        self.client.login(username='player', password='testpass123')
+
+        self.client.post(
+            reverse('matches:match_attendance', kwargs={'pk': self.match.pk})
+        )
+
+        notification = Notification.objects.get(
+            user=self.organizer,
+            match=self.match,
+        )
+        self.assertIn('player', notification.message)
+        self.assertIn('Attendance Match', notification.message)
+
     def test_confirm_attendance_is_idempotently_rejected(self):
         participant = MatchParticipant.objects.get(match=self.match, player=self.player)
         participant.attendance_confirmed = True
@@ -377,11 +393,21 @@ class MatchAttendanceViewTests(TestCase):
             email='other_player@example.com',
             password='testpass123',
         )
+        confirmed_player = User.objects.create_user(
+            username='confirmed_player',
+            email='confirmed_player@example.com',
+            password='testpass123',
+        )
         MatchParticipant.objects.create(
             match=self.match,
             player=other_player,
+            status=ParticipantStatus.LEFT,
+        )
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=confirmed_player,
             status=ParticipantStatus.CONFIRMED,
-            attendance_confirmed=False,
+            attendance_confirmed=True,
         )
         MatchParticipant.objects.create(
             match=other_match,

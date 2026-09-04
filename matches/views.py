@@ -19,7 +19,7 @@ from .models import (
     MatchVisibility,
     ParticipantStatus,
 )
-from .services import notify_match_cancellation
+from .services import notify_attendance_confirmation, notify_match_cancellation
 
 
 class MatchDetailView(DetailView):
@@ -337,6 +337,7 @@ class MatchAttendanceView(LoginRequiredMixin, View):
 
         participant.attendance_confirmed = True
         participant.save(update_fields=['attendance_confirmed', 'updated_at'])
+        notify_attendance_confirmation(match, request.user)
         messages.success(request, 'Your attendance has been confirmed.')
         return redirect('matches:match_detail', pk=match.pk)
 
