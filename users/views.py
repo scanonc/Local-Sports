@@ -1,13 +1,16 @@
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, ListView
 
-from .forms import SignUpForm
-from .models import Notification
+from .forms import ReportForm, SignUpForm
+from .models import Notification, Report
+
+User = get_user_model()
 
 
 class UserLoginView(LoginView):
@@ -59,3 +62,36 @@ def mark_notification_read(request, pk):
 	if notification.match_id:
 		return redirect('matches:match_detail', pk=notification.match_id)
 	return redirect('users:notifications')
+
+
+class ReportUserView(LoginRequiredMixin, CreateView):
+	"""FR18 - Report users."""
+
+	model = Report
+	form_class = ReportForm
+	template_name = 'users/report_form.html'
+
+	def dispatch(self, request, *args, **kwargs):
+		self.reported_user = get_object_or_404(User, pk=kwargs['pk'])
+
+		if self.reported_user.pk == request.user.pk:
+			messages.error(request, 'You cannot report yourself.')
+			return redirect('home')
+
+		return super().dispatch(request, *args, **kwargs)
+
+	def get_context_data(self, **kwargs):
+		context = super().get_context_data(**kwargs)
+		context['reported_user'] = self.reported_user
+		return context
+
+	def form_valid(self, form):
+		form.instance.reporter = self.request.user
+		form.instance.reported_user = self.reported_user
+		response = super().form_valid(form)
+		messages.success(self.request, f'Your report about {self.reported_user} was submitted.')
+		return response
+
+	def get_success_url(self):
+		next_url = self.request.POST.get('next')
+		return next_url or reverse_lazy('home')
