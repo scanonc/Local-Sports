@@ -1,7 +1,15 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User
+from .models import Report, User
+
+
+@admin.register(Report)
+class ReportAdmin(admin.ModelAdmin):
+	list_display = ('reporter', 'reported_user', 'reason', 'created_at')
+	list_filter = ('reason',)
+	search_fields = ('reporter__username', 'reported_user__username', 'details')
+	ordering = ('-created_at',)
 
 
 @admin.register(User)
