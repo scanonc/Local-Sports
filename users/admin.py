@@ -1,7 +1,14 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User
+from .models import FavoritePlayer, User
+
+
+@admin.register(FavoritePlayer)
+class FavoritePlayerAdmin(admin.ModelAdmin):
+	list_display = ('user', 'favorite', 'created_at')
+	search_fields = ('user__username', 'favorite__username')
+	ordering = ('-created_at',)
 
 
 @admin.register(User)
