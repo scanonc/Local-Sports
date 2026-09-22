@@ -1,13 +1,16 @@
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, ListView
 
 from .forms import SignUpForm
-from .models import Notification
+from .models import FavoritePlayer, Notification
+
+User = get_user_model()
 
 
 class UserLoginView(LoginView):
@@ -59,3 +62,41 @@ def mark_notification_read(request, pk):
 	if notification.match_id:
 		return redirect('matches:match_detail', pk=notification.match_id)
 	return redirect('users:notifications')
+
+
+class FavoritePlayerToggleView(LoginRequiredMixin, View):
+	"""FR17 - Favorite players.
+
+	Adds the target player to the current user's favorites list, or
+	removes them if they are already there (toggle behaviour).
+	"""
+
+	def post(self, request, pk):
+		target_player = get_object_or_404(User, pk=pk)
+		next_url = request.POST.get('next') or 'users:favorites'
+
+		if target_player.pk == request.user.pk:
+			messages.error(request, 'You cannot favorite yourself.')
+			return redirect(next_url)
+
+		favorite, created = FavoritePlayer.objects.get_or_create(
+			user=request.user,
+			favorite=target_player,
+		)
+
+		if created:
+			messages.success(request, f'{target_player} was added to your favorites.')
+		else:
+			favorite.delete()
+			messages.success(request, f'{target_player} was removed from your favorites.')
+
+		return redirect(next_url)
+
+
+class FavoritePlayerListView(LoginRequiredMixin, ListView):
+	model = FavoritePlayer
+	template_name = 'users/favorites.html'
+	context_object_name = 'favorites'
+
+	def get_queryset(self):
+		return FavoritePlayer.objects.filter(user=self.request.user).select_related('favorite')
