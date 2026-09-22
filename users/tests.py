@@ -1,11 +1,12 @@
 from datetime import timedelta
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from matches.models import Match, MatchVisibility
 
-from .models import Notification, User
+from .models import FavoritePlayer, Notification, User
 
 
 class UserModelTests(TestCase):
@@ -52,3 +53,64 @@ class NotificationModelTests(TestCase):
         self.assertEqual(notification.user, user)
         self.assertFalse(notification.is_read)
         self.assertEqual(notification.match, match)
+
+
+class FavoritePlayerTests(TestCase):
+    """FR17 - Favorite players."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='player1', email='player1@example.com', password='testpass123'
+        )
+        self.other = User.objects.create_user(
+            username='player2', email='player2@example.com', password='testpass123'
+        )
+
+    def test_toggling_adds_player_to_favorites(self):
+        self.client.login(username='player1', password='testpass123')
+
+        self.client.post(reverse('users:favorite_toggle', kwargs={'pk': self.other.pk}))
+
+        self.assertTrue(
+            FavoritePlayer.objects.filter(user=self.user, favorite=self.other).exists()
+        )
+
+    def test_toggling_twice_removes_favorite(self):
+        self.client.login(username='player1', password='testpass123')
+        self.client.post(reverse('users:favorite_toggle', kwargs={'pk': self.other.pk}))
+
+        self.client.post(reverse('users:favorite_toggle', kwargs={'pk': self.other.pk}))
+
+        self.assertFalse(
+            FavoritePlayer.objects.filter(user=self.user, favorite=self.other).exists()
+        )
+
+    def test_cannot_favorite_yourself(self):
+        self.client.login(username='player1', password='testpass123')
+
+        self.client.post(reverse('users:favorite_toggle', kwargs={'pk': self.user.pk}))
+
+        self.assertFalse(
+            FavoritePlayer.objects.filter(user=self.user, favorite=self.user).exists()
+        )
+
+    def test_favorite_toggle_requires_login(self):
+        response = self.client.post(
+            reverse('users:favorite_toggle', kwargs={'pk': self.other.pk})
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+
+    def test_favorites_list_only_shows_own_favorites(self):
+        third = User.objects.create_user(
+            username='player3', email='player3@example.com', password='testpass123'
+        )
+        FavoritePlayer.objects.create(user=self.user, favorite=self.other)
+        FavoritePlayer.objects.create(user=third, favorite=self.other)
+
+        self.client.login(username='player1', password='testpass123')
+        response = self.client.get(reverse('users:favorites'))
+
+        self.assertEqual(len(response.context['favorites']), 1)
+        self.assertEqual(response.context['favorites'][0].favorite, self.other)
