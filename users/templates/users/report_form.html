@@ -1,0 +1,29 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="card shadow-sm" style="max-width: 520px;">
+    <div class="card-body">
+        <h2 class="mb-3">Report {{ reported_user }}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.META.HTTP_REFERER }}">
+
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.reason.id_for_label }}">Reason</label>
+                {{ form.reason }}
+                {% if form.reason.errors %}
+                <div class="text-danger small mt-1">{{ form.reason.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.details.id_for_label }}">Details (optional)</label>
+                {{ form.details }}
+            </div>
+
+            <button type="submit" class="btn btn-danger">Submit report</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

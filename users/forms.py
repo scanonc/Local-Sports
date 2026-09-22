@@ -22,5 +22,8 @@ class ReportForm(forms.ModelForm):
         model = Report
         fields = ('reason', 'details')
         widgets = {
-            'details': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Optional details'}),
+            'reason': forms.Select(attrs={'class': 'form-select'}),
+            'details': forms.Textarea(
+                attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Optional details'}
+            ),
         }
