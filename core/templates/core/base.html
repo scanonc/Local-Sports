@@ -1,15 +1,34 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local Sports</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="{% static 'core/css/theme.css' %}" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-brand-navy">
         <div class="container">
-            <a class="navbar-brand" href="/">Local Sports</a>
+            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+                <svg width="32" height="32" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="navLogoGradient" x1="20" y1="10" x2="180" y2="190" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="#86F0AC"/>
+                            <stop offset="1" stop-color="#1D7A44"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M100,10 C55,10 20,45 20,90 C20,140 100,190 100,190 C100,190 180,140 180,90 C180,45 145,10 100,10 Z" fill="url(#navLogoGradient)"/>
+                    <circle cx="100" cy="86" r="34" fill="#FFFFFF" stroke="#0B1E3D" stroke-width="3"/>
+                    <polygon points="100,75 110.46,82.6 106.47,94.9 93.53,94.9 89.54,82.6" fill="#0B1E3D"/>
+                </svg>
+                <span>LOCAL <span class="navbar-brand-accent">SPORTS</span></span>
+            </a>
+            <span class="navbar-slogan d-none d-md-inline me-auto">Less organizing, more playing.</span>
             <div class="navbar-nav ms-auto align-items-center gap-2">
                 <a class="nav-link" href="/">Home</a>
                 <a class="nav-link" href="/matches/">Matches</a>
@@ -32,6 +51,9 @@
                 <a class="nav-link" href="/users/signup/">Sign up</a>
                 {% endif %}
                 <a class="nav-link" href="/admin/">Admin</a>
+                {% if user.is_authenticated %}
+                <span class="navbar-avatar" title="{{ user.get_full_name|default:user.username }}">{{ user.initials }}</span>
+                {% endif %}
             </div>
         </div>
     </nav>
