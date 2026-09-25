@@ -28,7 +28,15 @@
                     <dt class="col-sm-4">Location</dt>
                     <dd class="col-sm-8">{{ match.location }}</dd>
                     <dt class="col-sm-4">Skill level</dt>
-                    <dd class="col-sm-8">{{ match.get_skill_level_display }}</dd>
+                    <dd class="col-sm-8">
+                        {% if match.skill_level == 'beginner' %}
+                        <span class="skill-badge skill-badge-beginner">{{ match.get_skill_level_display }}</span>
+                        {% elif match.skill_level == 'intermediate' %}
+                        <span class="skill-badge skill-badge-intermediate">{{ match.get_skill_level_display }}</span>
+                        {% elif match.skill_level == 'advanced' %}
+                        <span class="skill-badge skill-badge-advanced">{{ match.get_skill_level_display }}</span>
+                        {% endif %}
+                    </dd>
                     <dt class="col-sm-4">Maximum players</dt>
                     <dd class="col-sm-8">{{ match.max_players }}</dd>
                     <dt class="col-sm-4">Visibility</dt>
