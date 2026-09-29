@@ -44,10 +44,18 @@
     <div class="col-md-6 col-lg-4">
         <div class="card h-100 shadow-sm">
             <div class="card-body">
-                <h2 class="h5 card-title mb-2">{{ match.title }}</h2>
+                <h2 class="h5 card-title mb-2 d-flex justify-content-between align-items-start gap-2">
+                    <span>{{ match.title }}</span>
+                    {% if match.skill_level == 'beginner' %}
+                    <span class="skill-badge skill-badge-beginner">{{ match.get_skill_level_display }}</span>
+                    {% elif match.skill_level == 'intermediate' %}
+                    <span class="skill-badge skill-badge-intermediate">{{ match.get_skill_level_display }}</span>
+                    {% elif match.skill_level == 'advanced' %}
+                    <span class="skill-badge skill-badge-advanced">{{ match.get_skill_level_display }}</span>
+                    {% endif %}
+                </h2>
                 <p class="card-text text-muted mb-2">{{ match.date_time }}</p>
                 <p class="card-text mb-1"><strong>Location:</strong> {{ match.location }}</p>
-                <p class="card-text mb-1"><strong>Skill:</strong> {{ match.get_skill_level_display }}</p>
                 <p class="card-text mb-1"><strong>Players:</strong> {{ match.max_players }}</p>
                 <p class="card-text mb-3"><strong>Visibility:</strong> {{ match.get_visibility_display }}</p>
                 <a class="btn btn-outline-primary btn-sm" href="{% url 'matches:match_detail' match.pk %}">View details</a>

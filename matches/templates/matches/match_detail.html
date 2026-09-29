@@ -28,7 +28,15 @@
                     <dt class="col-sm-4">Location</dt>
                     <dd class="col-sm-8">{{ match.location }}</dd>
                     <dt class="col-sm-4">Skill level</dt>
-                    <dd class="col-sm-8">{{ match.get_skill_level_display }}</dd>
+                    <dd class="col-sm-8">
+                        {% if match.skill_level == 'beginner' %}
+                        <span class="skill-badge skill-badge-beginner">{{ match.get_skill_level_display }}</span>
+                        {% elif match.skill_level == 'intermediate' %}
+                        <span class="skill-badge skill-badge-intermediate">{{ match.get_skill_level_display }}</span>
+                        {% elif match.skill_level == 'advanced' %}
+                        <span class="skill-badge skill-badge-advanced">{{ match.get_skill_level_display }}</span>
+                        {% endif %}
+                    </dd>
                     <dt class="col-sm-4">Maximum players</dt>
                     <dd class="col-sm-8">{{ match.max_players }}</dd>
                     <dt class="col-sm-4">Visibility</dt>
@@ -150,6 +158,15 @@
                             <span class="badge rounded-pill bg-light text-dark border border-secondary px-2 py-1">Pending Confirmation</span>
                             {% endif %}
                             {% if user.is_authenticated and participant.player_id != user.id %}
+                            <form method="post" action="{% url 'users:favorite_toggle' participant.player_id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                {% if participant.player_id in favorite_player_ids %}
+                                <button type="submit" class="btn btn-sm btn-outline-warning">★ Favorited</button>
+                                {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">☆ Add to favorites</button>
+                                {% endif %}
+                            </form>
                             <a href="{% url 'users:report_user' participant.player_id %}" class="btn btn-sm btn-outline-danger">Report</a>
                             {% endif %}
                         </div>

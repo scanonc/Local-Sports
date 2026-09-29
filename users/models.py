@@ -22,6 +22,13 @@ class User(AbstractUser):
 	def __str__(self):
 		return self.get_full_name() or self.username
 
+	@property
+	def initials(self):
+		first = self.first_name[:1]
+		last = self.last_name[:1]
+		combined = f'{first}{last}'.strip().upper()
+		return combined or self.username[:2].upper()
+
 
 class Notification(models.Model):
 	user = models.ForeignKey(
@@ -45,6 +52,39 @@ class Notification(models.Model):
 
 	def __str__(self):
 		return f'{self.user} - {self.message[:60]}'
+
+
+class FavoritePlayer(models.Model):
+	"""FR17 - Favorite players.
+
+	Records that `user` has marked `favorite` as a favorite player.
+	Directional (not mutual): each row is one player's own favorites list.
+	"""
+
+	user = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='favorite_players',
+	)
+	favorite = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='favorited_by',
+	)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['-created_at']
+		constraints = [
+			models.UniqueConstraint(fields=['user', 'favorite'], name='unique_favorite_player'),
+			models.CheckConstraint(
+				condition=~models.Q(user=models.F('favorite')),
+				name='favorite_player_not_self',
+			),
+		]
+
+	def __str__(self):
+		return f'{self.user} favorited {self.favorite}'
 
 
 class ReportReason(models.TextChoices):

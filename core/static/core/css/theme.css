@@ -1,0 +1,129 @@
+/*
+ * Local Sports - Brand design system
+ *
+ * Source of truth for these values: the "Brand identity" sheet in the
+ * team's design canvas (colors, typography, logo, slogan).
+ *
+ * Loaded AFTER bootstrap.min.css in base.html, so these rules override
+ * Bootstrap's defaults. Note: Bootstrap 5.3's prebuilt CDN CSS bakes
+ * component colors (e.g. .btn-primary) as static hex values, NOT as
+ * `var(--bs-primary)` lookups - so re-theming requires overriding the
+ * component classes directly, not just the global --bs-primary variable.
+ */
+
+:root {
+  /* Brand palette */
+  --verde-oscuro: #14532D;
+  --verde-claro: #4ADE80;
+  --azul-oscuro: #0B1E3D;
+  --blanco: #FFFFFF;
+  --fondo: #F3F7F4;
+  --texto: #0B1B15;
+  --gris: #5B6B62;
+  --borde: #DCE6DF;
+
+  /* Bootstrap globals that DO cascade from :root */
+  --bs-body-bg: var(--fondo);
+  --bs-body-color: var(--texto);
+  --bs-body-font-family: 'Manrope', sans-serif;
+  --bs-link-color-rgb: 20, 83, 45;       /* verde-oscuro, as R,G,B */
+  --bs-link-hover-color-rgb: 11, 58, 32; /* darker green on hover */
+}
+
+/* Headings and display text use the brand's condensed display face */
+h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* --- Buttons ---
+ * Bootstrap bakes .btn-primary's colors as static hex in its compiled
+ * CSS, so we override the component's own --bs-btn-* custom properties
+ * directly (this is the mechanism Bootstrap itself uses for hover/
+ * active/focus states, just with our values instead of its defaults).
+ */
+.btn-primary {
+  --bs-btn-bg: var(--verde-oscuro);
+  --bs-btn-border-color: var(--verde-oscuro);
+  --bs-btn-hover-bg: #0d3a20;
+  --bs-btn-hover-border-color: #0d3a20;
+  --bs-btn-active-bg: #0a2e19;
+  --bs-btn-active-border-color: #0a2e19;
+  --bs-btn-disabled-bg: var(--verde-oscuro);
+  --bs-btn-disabled-border-color: var(--verde-oscuro);
+  --bs-btn-focus-shadow-rgb: 20, 83, 45;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--verde-oscuro);
+  --bs-btn-border-color: var(--verde-oscuro);
+  --bs-btn-hover-bg: var(--verde-oscuro);
+  --bs-btn-hover-border-color: var(--verde-oscuro);
+  --bs-btn-active-bg: var(--verde-oscuro);
+  --bs-btn-active-border-color: var(--verde-oscuro);
+  --bs-btn-disabled-color: var(--verde-oscuro);
+  --bs-btn-disabled-border-color: var(--verde-oscuro);
+  --bs-btn-focus-shadow-rgb: 20, 83, 45;
+}
+
+/* --- Navbar ---
+ * .navbar-dark's own variables are hardcoded to white/rgba-white
+ * (not tied to page-level color vars), so it works fine on any dark
+ * background - we just need to set that background ourselves, since
+ * Bootstrap's bg-dark utility points at --bs-dark (its own gray), not
+ * our brand navy.
+ */
+.bg-brand-navy {
+  background-color: var(--azul-oscuro) !important;
+}
+
+.navbar-brand-accent {
+  color: var(--verde-claro) !important;
+}
+
+.navbar-slogan {
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.8rem;
+  color: var(--verde-claro);
+}
+
+/* --- Navbar avatar (initials) --- */
+.navbar-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--verde-oscuro);
+  color: var(--blanco);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+/* --- Skill level badges ---
+ * Matches the "Explorar partidos" / "Detalle del partido" mockups:
+ * beginner and intermediate both read as green (intermediate a touch
+ * darker), advanced reads as red. There is no yellow tier yet in the
+ * approved design.
+ */
+.skill-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+.skill-badge-beginner {
+  background: #E7F5EC;
+  color: var(--verde-oscuro);
+}
+.skill-badge-intermediate {
+  background: #DDF6E4;
+  color: var(--verde-oscuro);
+}
+.skill-badge-advanced {
+  background: #FDEAEA;
+  color: #8A2E2E;
+}
