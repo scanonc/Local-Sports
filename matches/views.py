@@ -21,6 +21,8 @@ from .models import (
 )
 from .services import notify_attendance_confirmation, notify_match_cancellation
 
+from users.models import FavoritePlayer
+
 
 class MatchDetailView(DetailView):
     model = Match
@@ -73,6 +75,14 @@ class MatchDetailView(DetailView):
         context['attendance_participants'] = self.object.participants.filter(
             status=ParticipantStatus.CONFIRMED,
         ).select_related('player')
+
+        context['favorite_player_ids'] = (
+            set(
+                FavoritePlayer.objects.filter(user=user).values_list('favorite_id', flat=True)
+            )
+            if user.is_authenticated
+            else set()
+        )
 
         context['user_has_confirmed_attendance'] = (
             user.is_authenticated

@@ -34,6 +34,7 @@
                 <a class="nav-link" href="/matches/">Matches</a>
                 <a class="nav-link" href="/matches/create/">Create match</a>
                 {% if user.is_authenticated %}
+                <a class="nav-link" href="{% url 'users:favorites' %}">Favorites</a>
                 <a class="nav-link position-relative" href="{% url 'users:notifications' %}" aria-label="Notifications">
                     🔔
                     {% if unread_notifications_count %}

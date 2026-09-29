@@ -1,0 +1,26 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h2 class="mb-3">My favorite players</h2>
+
+        {% if favorites %}
+            <div class="list-group">
+                {% for favorite in favorites %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ favorite.favorite }}</span>
+                        <form method="post" action="{% url 'users:favorite_toggle' favorite.favorite.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'users:favorites' %}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-light border">You haven't added any favorite players yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
