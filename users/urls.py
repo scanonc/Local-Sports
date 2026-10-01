@@ -4,6 +4,7 @@ from .views import (
     FavoritePlayerListView,
     FavoritePlayerToggleView,
     NotificationListView,
+    ReportUserView,
     SignUpView,
     UserLoginView,
     UserLogoutView,
@@ -20,4 +21,5 @@ urlpatterns = [
     path('notifications/<int:pk>/read/', mark_notification_read, name='mark_notification_read'),
     path('favorites/', FavoritePlayerListView.as_view(), name='favorites'),
     path('players/<int:pk>/favorite/', FavoritePlayerToggleView.as_view(), name='favorite_toggle'),
+    path('players/<int:pk>/report/', ReportUserView.as_view(), name='report_user'),
 ]

@@ -167,6 +167,7 @@
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">☆ Add to favorites</button>
                                 {% endif %}
                             </form>
+                            <a href="{% url 'users:report_user' participant.player_id %}" class="btn btn-sm btn-outline-danger">Report</a>
                             {% endif %}
                         </div>
                     </li>

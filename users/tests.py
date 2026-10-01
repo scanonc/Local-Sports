@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from matches.models import Match, MatchVisibility
 
-from .models import FavoritePlayer, Notification, User
+from .models import FavoritePlayer, Notification, Report, ReportReason, User
 
 
 class UserModelTests(TestCase):
@@ -114,3 +114,74 @@ class FavoritePlayerTests(TestCase):
 
         self.assertEqual(len(response.context['favorites']), 1)
         self.assertEqual(response.context['favorites'][0].favorite, self.other)
+
+
+class ReportUserTests(TestCase):
+    """FR18 - Report users."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='player1', email='player1@example.com', password='testpass123'
+        )
+        self.other = User.objects.create_user(
+            username='player2', email='player2@example.com', password='testpass123'
+        )
+
+    def test_submitting_report_records_reason(self):
+        self.client.login(username='player1', password='testpass123')
+
+        self.client.post(
+            reverse('users:report_user', kwargs={'pk': self.other.pk}),
+            data={'reason': ReportReason.NO_SHOW, 'details': 'Did not show up to the match.'},
+        )
+
+        report = Report.objects.get(reporter=self.user, reported_user=self.other)
+        self.assertEqual(report.reason, ReportReason.NO_SHOW)
+        self.assertEqual(report.details, 'Did not show up to the match.')
+
+    def test_details_are_optional(self):
+        self.client.login(username='player1', password='testpass123')
+
+        self.client.post(
+            reverse('users:report_user', kwargs={'pk': self.other.pk}),
+            data={'reason': ReportReason.OTHER, 'details': ''},
+        )
+
+        self.assertTrue(
+            Report.objects.filter(reporter=self.user, reported_user=self.other).exists()
+        )
+
+    def test_cannot_report_yourself(self):
+        self.client.login(username='player1', password='testpass123')
+
+        self.client.post(
+            reverse('users:report_user', kwargs={'pk': self.user.pk}),
+            data={'reason': ReportReason.OTHER, 'details': ''},
+        )
+
+        self.assertFalse(Report.objects.filter(reporter=self.user, reported_user=self.user).exists())
+
+    def test_report_requires_login(self):
+        response = self.client.post(
+            reverse('users:report_user', kwargs={'pk': self.other.pk}),
+            data={'reason': ReportReason.OTHER, 'details': ''},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+
+    def test_can_submit_multiple_reports_for_different_incidents(self):
+        self.client.login(username='player1', password='testpass123')
+
+        self.client.post(
+            reverse('users:report_user', kwargs={'pk': self.other.pk}),
+            data={'reason': ReportReason.NO_SHOW, 'details': 'First incident.'},
+        )
+        self.client.post(
+            reverse('users:report_user', kwargs={'pk': self.other.pk}),
+            data={'reason': ReportReason.ABUSIVE_LANGUAGE, 'details': 'Second incident.'},
+        )
+
+        self.assertEqual(
+            Report.objects.filter(reporter=self.user, reported_user=self.other).count(), 2
+        )

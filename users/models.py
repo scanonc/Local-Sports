@@ -85,3 +85,40 @@ class FavoritePlayer(models.Model):
 
 	def __str__(self):
 		return f'{self.user} favorited {self.favorite}'
+
+
+class ReportReason(models.TextChoices):
+	NO_SHOW = 'no_show', 'Did not show up'
+	UNSPORTSMANLIKE_CONDUCT = 'unsportsmanlike_conduct', 'Unsportsmanlike conduct'
+	ABUSIVE_LANGUAGE = 'abusive_language', 'Abusive language'
+	OTHER = 'other', 'Other'
+
+
+class Report(models.Model):
+	"""FR18 - Report users."""
+
+	reporter = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='reports_made',
+	)
+	reported_user = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='reports_received',
+	)
+	reason = models.CharField(max_length=30, choices=ReportReason.choices)
+	details = models.TextField(blank=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['-created_at']
+		constraints = [
+			models.CheckConstraint(
+				condition=~models.Q(reporter=models.F('reported_user')),
+				name='report_not_self',
+			),
+		]
+
+	def __str__(self):
+		return f'{self.reporter} reported {self.reported_user} ({self.get_reason_display()})'
