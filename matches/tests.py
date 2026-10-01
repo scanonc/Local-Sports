@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -720,7 +721,8 @@ class AutomaticReplacementTests(TestCase):
         self.assertEqual(player_a2.status, ParticipantStatus.CONFIRMED)
         self.assertEqual(player_b.status, ParticipantStatus.WAITING)
 
-    def test_increasing_max_players_promotes_from_waiting_list(self):
+    @patch('resend.Emails.send')
+    def test_increasing_max_players_promotes_from_waiting_list(self, mock_send):
         self.client.login(username='organizer', password='testpass123')
 
         self.client.post(
@@ -823,7 +825,8 @@ class MatchCancelViewTests(TestCase):
         self.match.refresh_from_db()
         self.assertEqual(self.match.status, MatchStatus.CANCELLED)
 
-    def test_cancellation_triggers_notification_and_logs(self):
+    @patch('resend.Emails.send')
+    def test_cancellation_triggers_notification_and_logs(self, mock_send):
         MatchParticipant.objects.create(
             match=self.match,
             player=self.player_one,
@@ -1055,6 +1058,197 @@ class MatchFilterListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No matches found matching your filter criteria.')
         self.assertContains(response, 'Clear filters')
+
+
+class MatchUpdateAndCancellationNotificationTests(TestCase):
+    """FR14 & FR14.1 - Push notification (in-app + Resend email) for match update and cancellation."""
+
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.player_confirmed = User.objects.create_user(
+            username='player_confirmed',
+            email='confirmed@example.com',
+            password='testpass123',
+        )
+        self.player_waiting = User.objects.create_user(
+            username='player_waiting',
+            email='waiting@example.com',
+            password='testpass123',
+        )
+        self.player_left = User.objects.create_user(
+            username='player_left',
+            email='left@example.com',
+            password='testpass123',
+        )
+
+        self.match_time = (timezone.now() + timedelta(days=3)).replace(second=0, microsecond=0)
+        self.match = Match.objects.create(
+            organizer=self.organizer,
+            title='Championship Quarterfinal',
+            date_time=self.match_time,
+            location='Main Stadium',
+            skill_level='intermediate',
+            max_players=5,
+            visibility='public',
+        )
+
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=self.player_confirmed,
+            status=ParticipantStatus.CONFIRMED,
+        )
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=self.player_waiting,
+            status=ParticipantStatus.WAITING,
+        )
+        MatchParticipant.objects.create(
+            match=self.match,
+            player=self.player_left,
+            status=ParticipantStatus.LEFT,
+        )
+
+    @patch('resend.Emails.send')
+    def test_update_match_creates_notifications_and_sends_emails(self, mock_send):
+        """Updating relevant match fields creates Notification and sends Resend email to confirmed and waiting players."""
+        self.client.login(username='organizer', password='testpass123')
+
+        new_time = self.match_time + timedelta(hours=2)
+        response = self.client.post(
+            reverse('matches:match_update', kwargs={'pk': self.match.pk}),
+            data={
+                'title': 'Championship Quarterfinal Rescheduled',
+                'date_time': new_time.strftime('%Y-%m-%dT%H:%M'),
+                'location': 'Secondary Arena',
+                'skill_level': 'intermediate',
+                'max_players': 5,
+                'visibility': 'public',
+            },
+        )
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.location, 'Secondary Arena')
+
+        # Notifications should be created only for confirmed and waiting participants
+        notifications = Notification.objects.filter(match=self.match)
+        self.assertEqual(notifications.count(), 2)
+
+        confirmed_notif = notifications.filter(user=self.player_confirmed).first()
+        self.assertIsNotNone(confirmed_notif)
+        self.assertIn("Championship Quarterfinal Rescheduled", confirmed_notif.message)
+        self.assertFalse(confirmed_notif.is_read)
+
+        waiting_notif = notifications.filter(user=self.player_waiting).first()
+        self.assertIsNotNone(waiting_notif)
+        self.assertIn("Championship Quarterfinal Rescheduled", waiting_notif.message)
+        self.assertFalse(waiting_notif.is_read)
+
+        # Participant with status='left' should NOT receive a notification
+        left_notif = notifications.filter(user=self.player_left).first()
+        self.assertIsNone(left_notif)
+
+        # Resend API should be called twice (confirmed and waiting, not left)
+        self.assertEqual(mock_send.call_count, 2)
+        called_recipients = [call.args[0]['to'][0] for call in mock_send.call_args_list]
+        self.assertIn('confirmed@example.com', called_recipients)
+        self.assertIn('waiting@example.com', called_recipients)
+        self.assertNotIn('left@example.com', called_recipients)
+
+        # Email content verification
+        first_call_params = mock_send.call_args_list[0].args[0]
+        self.assertIn('Championship Quarterfinal Rescheduled', first_call_params['subject'])
+        self.assertIn('Championship Quarterfinal Rescheduled', first_call_params['html'])
+
+    @patch('resend.Emails.send')
+    def test_update_match_without_real_changes_does_not_notify_or_email(self, mock_send):
+        """Saving the update form without real changes sends neither notifications nor emails."""
+        self.client.login(username='organizer', password='testpass123')
+
+        response = self.client.post(
+            reverse('matches:match_update', kwargs={'pk': self.match.pk}),
+            data={
+                'title': self.match.title,
+                'date_time': self.match.date_time.strftime('%Y-%m-%dT%H:%M'),
+                'location': self.match.location,
+                'skill_level': self.match.skill_level,
+                'max_players': self.match.max_players,
+                'visibility': self.match.visibility,
+            },
+        )
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+
+        # No notifications or emails should be dispatched
+        self.assertEqual(Notification.objects.filter(match=self.match).count(), 0)
+        mock_send.assert_not_called()
+
+    @patch('resend.Emails.send')
+    def test_cancel_match_creates_notifications_and_sends_emails(self, mock_send):
+        """Canceling a match notifies confirmed and waiting participants via in-app Notification and Resend email."""
+        self.client.login(username='organizer', password='testpass123')
+
+        response = self.client.post(
+            reverse('matches:match_cancel', kwargs={'pk': self.match.pk}),
+            follow=True,
+        )
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.CANCELLED)
+
+        # Notifications should be created for confirmed and waiting participants
+        notifications = Notification.objects.filter(match=self.match)
+        self.assertEqual(notifications.count(), 2)
+
+        confirmed_notif = notifications.filter(user=self.player_confirmed).first()
+        self.assertIsNotNone(confirmed_notif)
+        self.assertIn("cancelled", confirmed_notif.message.lower())
+        self.assertFalse(confirmed_notif.is_read)
+
+        waiting_notif = notifications.filter(user=self.player_waiting).first()
+        self.assertIsNotNone(waiting_notif)
+        self.assertIn("cancelled", waiting_notif.message.lower())
+        self.assertFalse(waiting_notif.is_read)
+
+        # Participant with status='left' should NOT receive a notification
+        left_notif = notifications.filter(user=self.player_left).first()
+        self.assertIsNone(left_notif)
+
+        # Resend email calls
+        self.assertEqual(mock_send.call_count, 2)
+        called_recipients = [call.args[0]['to'][0] for call in mock_send.call_args_list]
+        self.assertIn('confirmed@example.com', called_recipients)
+        self.assertIn('waiting@example.com', called_recipients)
+        self.assertNotIn('left@example.com', called_recipients)
+
+        first_call_params = mock_send.call_args_list[0].args[0]
+        self.assertIn(self.match.title, first_call_params['subject'])
+        self.assertIn('cancelled', first_call_params['subject'].lower())
+
+    @patch('resend.Emails.send')
+    def test_participant_with_status_left_receives_no_notification_or_email(self, mock_send):
+        """Participants who left the match must not be notified on update or cancellation."""
+        from .services import notify_match_cancellation, notify_match_update
+
+        # Call notify_match_update directly
+        notify_match_update(self.match)
+        self.assertEqual(Notification.objects.filter(user=self.player_left, match=self.match).count(), 0)
+        called_recipients = [call.args[0]['to'][0] for call in mock_send.call_args_list]
+        self.assertNotIn('left@example.com', called_recipients)
+
+        mock_send.reset_mock()
+        Notification.objects.all().delete()
+
+        # Call notify_match_cancellation directly
+        notify_match_cancellation(request=None, match=self.match)
+        self.assertEqual(Notification.objects.filter(user=self.player_left, match=self.match).count(), 0)
+        called_recipients = [call.args[0]['to'][0] for call in mock_send.call_args_list]
+        self.assertNotIn('left@example.com', called_recipients)
+
 
 
 
