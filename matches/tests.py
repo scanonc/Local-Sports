@@ -1163,6 +1163,7 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
         first_call_params = mock_send.call_args_list[0].args[0]
         self.assertIn('Championship Quarterfinal Rescheduled', first_call_params['subject'])
         self.assertIn('Championship Quarterfinal Rescheduled', first_call_params['html'])
+        self.assertEqual(first_call_params['from'], 'Local Sports <onboarding@resend.dev>')
 
     @patch('resend.Emails.send')
     def test_update_match_without_real_changes_does_not_notify_or_email(self, mock_send):
@@ -1248,7 +1249,6 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
         self.assertEqual(Notification.objects.filter(user=self.player_left, match=self.match).count(), 0)
         called_recipients = [call.args[0]['to'][0] for call in mock_send.call_args_list]
         self.assertNotIn('left@example.com', called_recipients)
-
 
 
 
