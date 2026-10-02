@@ -19,7 +19,11 @@ from .models import (
     MatchVisibility,
     ParticipantStatus,
 )
-from .services import notify_attendance_confirmation, notify_match_cancellation
+from .services import (
+    notify_attendance_confirmation,
+    notify_match_cancellation,
+    notify_match_update,
+)
 
 from users.models import FavoritePlayer
 
@@ -174,13 +178,30 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        """FR11 - Automatic replacement.
+        """FR11 - Automatic replacement & FR14 - Match update notifications.
 
         If the organizer increases max_players, promote waiting players
         into the newly opened spots right away.
+        Notify affected participants if relevant match fields were updated.
         """
+        old_match = Match.objects.get(pk=self.object.pk)
+        relevant_fields = ['title', 'date_time', 'location', 'max_players', 'skill_level', 'status']
+
+        def _field_changed(field):
+            old_val = getattr(old_match, field)
+            new_val = getattr(form.instance, field)
+            if isinstance(old_val, datetime) and isinstance(new_val, datetime):
+                return old_val.replace(second=0, microsecond=0) != new_val.replace(second=0, microsecond=0)
+            return old_val != new_val
+
+        changed_fields = [f for f in relevant_fields if _field_changed(f)]
+
         response = super().form_valid(form)
         self.object.promote_from_waiting_list()
+
+        if changed_fields:
+            notify_match_update(self.object, changed_fields=changed_fields)
+
         return response
 
 

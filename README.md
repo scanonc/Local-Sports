@@ -34,6 +34,13 @@ python manage.py runserver
 
 Then open `http://127.0.0.1:8000/` in the browser.
 
+## Email notifications
+
+Match update and cancellation emails are sent through Resend. Copy `.env.example`
+to `.env`, set `RESEND_API_KEY`, and use a sender that is verified in your Resend
+account through `DEFAULT_FROM_EMAIL`. With a Resend test API key, the recipient
+may also need to be the email address associated with that Resend account.
+
 ## Dependencies
 
 `requirements.txt` only pins Django itself; `asgiref`, `sqlparse` and `tzdata` are internal dependencies that Django installs automatically (see the comments in `requirements.txt` for what each one is used for). We don't add any other third-party package - Bootstrap is loaded via CDN in the base template, not installed with pip.
