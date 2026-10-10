@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
@@ -12,6 +13,8 @@ from .forms import MatchForm
 from .models import (
     JoinRequest,
     JoinRequestStatus,
+    Invitation,
+    InvitationStatus,
     Match,
     MatchParticipant,
     MatchSkillLevel,
@@ -26,6 +29,9 @@ from .services import (
 )
 
 from users.models import FavoritePlayer
+from users.models import Notification
+
+User = get_user_model()
 
 
 class MatchDetailView(DetailView):
@@ -104,8 +110,111 @@ class MatchDetailView(DetailView):
                 request_status=JoinRequestStatus.PENDING,
             ).select_related('player')
             context['waiting_list'] = self.object.waiting_participants.select_related('player')
+            participant_ids = self.object.participants.filter(
+                status__in=[ParticipantStatus.CONFIRMED, ParticipantStatus.WAITING],
+            ).values_list('player_id', flat=True)
+            invited_player_ids = Invitation.objects.filter(
+                match=self.object,
+                status=InvitationStatus.PENDING,
+            ).values_list('player_id', flat=True)
+            context['inviteable_players'] = User.objects.filter(
+                is_active=True,
+            ).exclude(
+                pk__in=participant_ids,
+            ).exclude(
+                pk__in=invited_player_ids,
+            ).exclude(
+                pk=self.object.organizer_id,
+            ).order_by('username')
 
         return context
+
+
+class MatchInvitePlayersView(LoginRequiredMixin, View):
+    """Send persistent invitations from a match organizer to registered players."""
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id != request.user.id:
+            messages.error(request, 'Only the organizer can invite players.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        player_ids = request.POST.getlist('players')
+        if not player_ids:
+            messages.error(request, 'Select at least one player to invite.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        with transaction.atomic():
+            match = Match.objects.select_for_update().get(pk=pk)
+
+            if match.status == MatchStatus.CANCELLED:
+                messages.error(request, 'This match has been cancelled.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if match.has_started:
+                messages.error(request, 'This match has already started or finished.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            confirmed_count = MatchParticipant.objects.filter(
+                match=match,
+                status=ParticipantStatus.CONFIRMED,
+            ).count()
+            available_slots = match.max_players - confirmed_count
+            if available_slots <= 0:
+                messages.error(request, 'This match is full and cannot accept invitations.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            try:
+                selected_ids = {int(player_id) for player_id in player_ids}
+            except (TypeError, ValueError):
+                selected_ids = set()
+
+            participant_ids = set(match.participants.filter(
+                status__in=[ParticipantStatus.CONFIRMED, ParticipantStatus.WAITING],
+            ).values_list('player_id', flat=True))
+            pending_invitation_ids = set(Invitation.objects.filter(
+                match=match,
+                status=InvitationStatus.PENDING,
+            ).values_list('player_id', flat=True))
+            eligible_ids = set(User.objects.filter(
+                pk__in=selected_ids,
+                is_active=True,
+            ).values_list('pk', flat=True))
+
+            if (
+                len(selected_ids) != len(player_ids)
+                or selected_ids - eligible_ids
+                or selected_ids & participant_ids
+                or selected_ids & pending_invitation_ids
+                or match.organizer_id in selected_ids
+            ):
+                messages.error(request, 'One or more selected players cannot be invited.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if len(selected_ids) > available_slots:
+                messages.error(
+                    request,
+                    f'You can invite up to {available_slots} player(s) because of the match capacity.',
+                )
+                return redirect('matches:match_detail', pk=match.pk)
+
+            players = User.objects.filter(pk__in=selected_ids)
+            Invitation.objects.bulk_create([
+                Invitation(match=match, organizer=request.user, player=player)
+                for player in players
+            ])
+            Notification.objects.bulk_create([
+                Notification(
+                    user=player,
+                    match=match,
+                    message=f'You have been invited by {request.user} to the match "{match.title}".',
+                )
+                for player in players
+            ])
+
+        messages.success(request, f'Invitation sent to {len(selected_ids)} player(s).')
+        return redirect('matches:match_detail', pk=match.pk)
 
 
 class MatchListView(ListView):

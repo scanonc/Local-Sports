@@ -197,3 +197,46 @@ class JoinRequest(models.Model):
 
     def __str__(self):
         return f'{self.player} -> {self.match} ({self.request_status})'
+
+
+class InvitationStatus(models.TextChoices):
+	PENDING = 'pending', 'Pending'
+	ACCEPTED = 'accepted', 'Accepted'
+	DECLINED = 'declined', 'Declined'
+
+
+class Invitation(models.Model):
+	match = models.ForeignKey(
+		Match,
+		on_delete=models.CASCADE,
+		related_name='invitations',
+	)
+	organizer = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='sent_invitations',
+	)
+	player = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='received_invitations',
+	)
+	status = models.CharField(
+		max_length=20,
+		choices=InvitationStatus.choices,
+		default=InvitationStatus.PENDING,
+	)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['-created_at']
+		constraints = [
+			models.UniqueConstraint(
+				fields=['match', 'player'],
+				condition=models.Q(status=InvitationStatus.PENDING),
+				name='unique_pending_invitation',
+			),
+		]
+
+	def __str__(self):
+		return f'{self.organizer} invited {self.player} to {self.match} ({self.status})'

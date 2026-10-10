@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import Match, MatchParticipant
+from .models import Invitation, Match, MatchParticipant
+
+
+@admin.register(Invitation)
+class InvitationAdmin(admin.ModelAdmin):
+	list_display = ('match', 'organizer', 'player', 'status', 'created_at')
+	list_filter = ('status', 'created_at')
+	search_fields = ('match__title', 'organizer__username', 'player__username')
+	readonly_fields = ('created_at',)
 
 
 @admin.register(Match)

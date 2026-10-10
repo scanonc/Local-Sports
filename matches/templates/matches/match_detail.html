@@ -143,6 +143,24 @@
                 </div>
                 {% endif %}
 
+                {% if match.status != 'cancelled' and user_is_organizer and inviteable_players %}
+                <hr class="my-4">
+
+                <h2 class="h5 mb-3">Invite players</h2>
+                <form method="post" action="{% url 'matches:match_invite_players' match.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="invite-players" class="form-label">Select registered players</label>
+                        <select id="invite-players" name="players" class="form-select" multiple size="6" required>
+                            {% for player in inviteable_players %}
+                            <option value="{{ player.pk }}">{{ player.get_full_name|default:player.username }} ({{ player.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send invitations</button>
+                </form>
+                {% endif %}
+
                 <hr class="my-4">
 
                 <h2 class="h5 mb-3">Confirmed attendees</h2>
