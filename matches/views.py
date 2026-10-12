@@ -1,8 +1,10 @@
 from datetime import datetime
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.views import View
@@ -12,6 +14,8 @@ from .forms import MatchForm
 from .models import (
     JoinRequest,
     JoinRequestStatus,
+    Invitation,
+    InvitationStatus,
     Match,
     MatchParticipant,
     MatchSkillLevel,
@@ -26,6 +30,9 @@ from .services import (
 )
 
 from users.models import FavoritePlayer
+from users.models import Notification
+
+User = get_user_model()
 
 
 class MatchDetailView(DetailView):
@@ -98,14 +105,176 @@ class MatchDetailView(DetailView):
             ).exists()
         )
 
+        context['pending_invitation'] = (
+            Invitation.objects.filter(
+                match=self.object,
+                player=user,
+                status=InvitationStatus.PENDING,
+            ).select_related('organizer').first()
+            if user.is_authenticated
+            else None
+        )
+
         if user_is_organizer:
             context['pending_join_requests'] = JoinRequest.objects.filter(
                 match=self.object,
                 request_status=JoinRequestStatus.PENDING,
             ).select_related('player')
             context['waiting_list'] = self.object.waiting_participants.select_related('player')
+            invited_player_ids = Invitation.objects.filter(
+                match=self.object,
+                status=InvitationStatus.PENDING,
+            ).values_list('player_id', flat=True)
+            context['has_pending_invitations'] = Invitation.objects.filter(
+                match=self.object,
+                status=InvitationStatus.PENDING,
+            ).exists()
 
         return context
+
+
+class MatchInvitePlayersView(LoginRequiredMixin, View):
+    """Send persistent invitations from a match organizer to registered players."""
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id != request.user.id:
+            messages.error(request, 'Only the organizer can invite players.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        player_identifier = request.POST.get('player_identifier', '').strip()
+        if not player_identifier:
+            messages.error(request, 'Enter a username or email address to invite.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        with transaction.atomic():
+            match = Match.objects.select_for_update().get(pk=pk)
+
+            if match.status == MatchStatus.CANCELLED:
+                messages.error(request, 'This match has been cancelled.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if match.has_started:
+                messages.error(request, 'This match has already started or finished.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            confirmed_count = MatchParticipant.objects.filter(
+                match=match,
+                status=ParticipantStatus.CONFIRMED,
+            ).count()
+            available_slots = match.max_players - confirmed_count
+            if available_slots <= 0:
+                messages.error(request, 'This match is full and cannot accept invitations.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            player = User.objects.filter(
+                Q(username__iexact=player_identifier) | Q(email__iexact=player_identifier),
+                is_active=True,
+            ).first()
+            participant_ids = set(match.participants.filter(
+                status__in=[ParticipantStatus.CONFIRMED, ParticipantStatus.WAITING],
+            ).values_list('player_id', flat=True))
+            pending_invitation_ids = set(Invitation.objects.filter(
+                match=match,
+                status=InvitationStatus.PENDING,
+            ).values_list('player_id', flat=True))
+            if (
+                player is None
+                or player.pk in participant_ids
+                or player.pk in pending_invitation_ids
+                or match.organizer_id == player.pk
+            ):
+                messages.error(request, 'This player cannot be invited.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            Invitation.objects.create(match=match, organizer=request.user, player=player)
+            Notification.objects.create(
+                user=player,
+                match=match,
+                message=f'You have been invited by {request.user} to the match "{match.title}".',
+            )
+
+        messages.success(request, f'Invitation sent to {player}.')
+        return redirect('matches:match_detail', pk=match.pk)
+
+
+class MatchInvitationResponseView(LoginRequiredMixin, View):
+    """Accept or decline a pending invitation as its intended player."""
+
+    def post(self, request, pk, invitation_id, action):
+        with transaction.atomic():
+            match = get_object_or_404(
+                Match.objects.select_for_update(),
+                pk=pk,
+            )
+            invitation = get_object_or_404(
+                Invitation.objects.select_for_update(),
+                pk=invitation_id,
+                match=match,
+                player=request.user,
+                status=InvitationStatus.PENDING,
+            )
+
+            if action == 'decline':
+                invitation.status = InvitationStatus.DECLINED
+                invitation.save(update_fields=['status'])
+                messages.success(request, 'The invitation has been declined.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if action != 'accept':
+                messages.error(request, 'This invitation action is not available.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if match.status == MatchStatus.CANCELLED:
+                messages.error(request, 'This match has been cancelled.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if match.has_started:
+                messages.error(request, 'This match has already started or finished.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            participant = MatchParticipant.objects.filter(
+                match=match,
+                player=request.user,
+            ).first()
+            if participant and participant.status in [
+                ParticipantStatus.CONFIRMED,
+                ParticipantStatus.WAITING,
+            ]:
+                messages.error(request, 'You are already participating in this match.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            confirmed_count = MatchParticipant.objects.filter(
+                match=match,
+                status=ParticipantStatus.CONFIRMED,
+            ).count()
+            if confirmed_count >= match.max_players:
+                if match.visibility != MatchVisibility.PUBLIC:
+                    messages.error(request, 'This match is full and cannot accept the invitation.')
+                    return redirect('matches:match_detail', pk=match.pk)
+                participant_status = ParticipantStatus.WAITING
+                message = 'The invitation was accepted. You were added to the waiting list.'
+            else:
+                participant_status = ParticipantStatus.CONFIRMED
+                message = 'The invitation was accepted. You joined the match.'
+
+            if participant:
+                participant.status = participant_status
+                participant.attendance_confirmed = False
+                participant.save(update_fields=['status', 'attendance_confirmed', 'updated_at'])
+            else:
+                MatchParticipant.objects.create(
+                    match=match,
+                    player=request.user,
+                    status=participant_status,
+                )
+
+            invitation.status = InvitationStatus.ACCEPTED
+            invitation.save(update_fields=['status'])
+
+        messages.success(request, message)
+        return redirect('matches:match_detail', pk=match.pk)
 
 
 class MatchListView(ListView):
