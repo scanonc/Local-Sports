@@ -60,7 +60,17 @@
                     </form>
                     <span class="align-self-center text-muted ms-2">You are the organizer of this match.</span>
                     {% elif user.is_authenticated %}
-                        {% if user_is_participant %}
+                        {% if pending_invitation %}
+                        <span class="align-self-center text-info">You were invited by {{ pending_invitation.organizer }}.</span>
+                        <form method="post" action="{% url 'matches:match_invitation_response' match.pk pending_invitation.pk 'accept' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">Accept invitation</button>
+                        </form>
+                        <form method="post" action="{% url 'matches:match_invitation_response' match.pk pending_invitation.pk 'decline' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger">Reject invitation</button>
+                        </form>
+                        {% elif user_is_participant %}
                         <form method="post" action="{% url 'matches:match_leave' match.pk %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-danger">Leave match</button>
@@ -143,21 +153,17 @@
                 </div>
                 {% endif %}
 
-                {% if match.status != 'cancelled' and user_is_organizer and inviteable_players %}
+                {% if match.status != 'cancelled' and user_is_organizer %}
                 <hr class="my-4">
 
                 <h2 class="h5 mb-3">Invite players</h2>
                 <form method="post" action="{% url 'matches:match_invite_players' match.pk %}">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="invite-players" class="form-label">Select registered players</label>
-                        <select id="invite-players" name="players" class="form-select" multiple size="6" required>
-                            {% for player in inviteable_players %}
-                            <option value="{{ player.pk }}">{{ player.get_full_name|default:player.username }} ({{ player.username }})</option>
-                            {% endfor %}
-                        </select>
+                        <label for="invite-player" class="form-label">Username or email address</label>
+                        <input id="invite-player" name="player_identifier" type="text" class="form-control" placeholder="e.g. player@example.com" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">Send invitations</button>
+                    <button type="submit" class="btn btn-primary">Send invitation</button>
                 </form>
                 {% endif %}
 

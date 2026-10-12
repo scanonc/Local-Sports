@@ -182,11 +182,11 @@ class MatchInvitationViewTests(TestCase):
             visibility='public',
         )
 
-    def invite(self, *players):
+    def invite(self, player):
         self.client.login(username='organizer', password='testpass123')
         return self.client.post(
             reverse('matches:match_invite_players', kwargs={'pk': self.match.pk}),
-            data={'players': [player.pk for player in players]},
+            data={'player_identifier': player.username},
         )
 
     def test_organizer_can_invite_one_player_and_player_sees_notification(self):
@@ -199,7 +199,8 @@ class MatchInvitationViewTests(TestCase):
         self.assertTrue(Notification.objects.filter(user=self.player_one, match=self.match).exists())
 
     def test_organizer_can_invite_multiple_players(self):
-        self.invite(self.player_one, self.player_two)
+        self.invite(self.player_one)
+        self.invite(self.player_two)
 
         self.assertEqual(
             Invitation.objects.filter(match=self.match, status=InvitationStatus.PENDING).count(),
@@ -233,15 +234,88 @@ class MatchInvitationViewTests(TestCase):
             status=ParticipantStatus.CONFIRMED,
         )
 
-        response = self.invite(self.player_one, User.objects.create_user(
+        response = self.invite(self.player_one)
+
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+        self.assertFalse(Invitation.objects.filter(match=self.match).exists())
+
+    def test_inactive_player_cannot_be_invited(self):
+        inactive_player = User.objects.create_user(
             username='inactive',
             email='inactive@example.com',
             password='testpass123',
             is_active=False,
-        ))
+        )
+
+        response = self.invite(inactive_player)
 
         self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
         self.assertFalse(Invitation.objects.filter(match=self.match).exists())
+
+    def test_invited_player_can_accept_public_match(self):
+        self.invite(self.player_one)
+        invitation = Invitation.objects.get(match=self.match, player=self.player_one)
+        self.client.login(username='player_one', password='testpass123')
+
+        response = self.client.post(reverse(
+            'matches:match_invitation_response',
+            kwargs={'pk': self.match.pk, 'invitation_id': invitation.pk, 'action': 'accept'},
+        ))
+
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.match.pk}))
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, InvitationStatus.ACCEPTED)
+        self.assertEqual(
+            MatchParticipant.objects.get(match=self.match, player=self.player_one).status,
+            ParticipantStatus.CONFIRMED,
+        )
+
+    def test_invited_player_can_accept_approval_required_match(self):
+        self.match.visibility = 'approval_required'
+        self.match.save(update_fields=['visibility'])
+        self.invite(self.player_one)
+        invitation = Invitation.objects.get(match=self.match, player=self.player_one)
+        self.client.login(username='player_one', password='testpass123')
+
+        self.client.post(reverse(
+            'matches:match_invitation_response',
+            kwargs={'pk': self.match.pk, 'invitation_id': invitation.pk, 'action': 'accept'},
+        ))
+
+        self.assertTrue(
+            MatchParticipant.objects.filter(
+                match=self.match,
+                player=self.player_one,
+                status=ParticipantStatus.CONFIRMED,
+            ).exists()
+        )
+
+    def test_invited_player_can_reject_invitation(self):
+        self.invite(self.player_one)
+        invitation = Invitation.objects.get(match=self.match, player=self.player_one)
+        self.client.login(username='player_one', password='testpass123')
+
+        self.client.post(reverse(
+            'matches:match_invitation_response',
+            kwargs={'pk': self.match.pk, 'invitation_id': invitation.pk, 'action': 'decline'},
+        ))
+
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, InvitationStatus.DECLINED)
+        self.assertFalse(MatchParticipant.objects.filter(match=self.match, player=self.player_one).exists())
+
+    def test_only_invited_player_can_respond(self):
+        self.invite(self.player_one)
+        invitation = Invitation.objects.get(match=self.match, player=self.player_one)
+        self.client.login(username='other', password='testpass123')
+
+        self.client.post(reverse(
+            'matches:match_invitation_response',
+            kwargs={'pk': self.match.pk, 'invitation_id': invitation.pk, 'action': 'accept'},
+        ))
+
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, InvitationStatus.PENDING)
 
 
 class MatchJoinViewTests(TestCase):
