@@ -1,5 +1,6 @@
 from datetime import timedelta
 from unittest.mock import patch
+import uuid
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -19,6 +20,7 @@ from .models import (
     Match,
     MatchParticipant,
     MatchStatus,
+    MatchVisibility,
     ParticipantStatus,
 )
 
@@ -1419,6 +1421,436 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
         self.assertEqual(Notification.objects.filter(user=self.player_left, match=self.match).count(), 0)
         called_recipients = [call.args[0]['to'][0] for call in mock_send.call_args_list]
         self.assertNotIn('left@example.com', called_recipients)
+
+
+class MatchInviteLinkGenerationTests(TestCase):
+    """FR16 - Tests for shareable invitation link generation (Phase 6)."""
+
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.other_user = User.objects.create_user(
+            username='other_user',
+            email='other@example.com',
+            password='testpass123',
+        )
+        self.match = Match.objects.create(
+            organizer=self.organizer,
+            title='Friendly Saturday Match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Main Stadium',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+        )
+
+    def test_token_is_not_generated_upon_match_creation(self):
+        """Token must not be generated when creating a match, only when requested."""
+        self.assertIsNone(self.match.invite_token)
+        self.assertTrue(self.match.invite_active)
+
+    def test_unauthenticated_user_cannot_generate_invite_link(self):
+        """Unauthenticated requests to the generation endpoint are redirected to login."""
+        response = self.client.post(
+            reverse('matches:match_invite_link', kwargs={'pk': self.match.pk})
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+        self.match.refresh_from_db()
+        self.assertIsNone(self.match.invite_token)
+
+    def test_non_organizer_cannot_generate_invite_link(self):
+        """Only the match organizer can generate the invitation link."""
+        self.client.login(username='other_user', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_invite_link', kwargs={'pk': self.match.pk})
+        )
+        self.assertRedirects(
+            response,
+            reverse('matches:match_detail', kwargs={'pk': self.match.pk}),
+        )
+        self.match.refresh_from_db()
+        self.assertIsNone(self.match.invite_token)
+
+    def test_non_organizer_json_request_is_forbidden(self):
+        """Non-organizer JSON request receives 403 Forbidden."""
+        self.client.login(username='other_user', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}),
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.match.refresh_from_db()
+        self.assertIsNone(self.match.invite_token)
+
+    def test_organizer_can_generate_invite_link_on_demand(self):
+        """Organizer generates invite link on demand, creating token and redirecting with success."""
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}),
+            follow=True,
+        )
+        self.assertRedirects(
+            response,
+            reverse('matches:match_detail', kwargs={'pk': self.match.pk}),
+        )
+        self.match.refresh_from_db()
+        self.assertIsNotNone(self.match.invite_token)
+        self.assertTrue(self.match.invite_active)
+        self.assertContains(response, 'Shareable invitation link generated')
+
+    def test_repeated_generation_requests_reuse_same_token(self):
+        """Repeated generation requests for the same match do not change the existing token."""
+        self.client.login(username='organizer', password='testpass123')
+        self.client.post(reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}))
+        self.match.refresh_from_db()
+        first_token = self.match.invite_token
+
+        self.client.post(reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}))
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.invite_token, first_token)
+
+    def test_different_matches_receive_unique_tokens(self):
+        """Different matches receive unique invite tokens."""
+        second_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Second Match',
+            date_time=timezone.now() + timedelta(days=3),
+            location='Field 2',
+            skill_level='intermediate',
+            max_players=8,
+            visibility='public',
+        )
+        self.client.login(username='organizer', password='testpass123')
+
+        self.client.post(reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}))
+        self.client.post(reverse('matches:match_invite_link', kwargs={'pk': second_match.pk}))
+
+        self.match.refresh_from_db()
+        second_match.refresh_from_db()
+
+        self.assertIsNotNone(self.match.invite_token)
+        self.assertIsNotNone(second_match.invite_token)
+        self.assertNotEqual(self.match.invite_token, second_match.invite_token)
+
+    def test_invite_url_points_to_join_via_link_route(self):
+        """The absolute URL built contains the expected path with the generated token."""
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}),
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('invite_url', data)
+        self.assertIn('invite_token', data)
+
+        self.match.refresh_from_db()
+        expected_path = reverse('matches:match_join_via_link', kwargs={'token': str(self.match.invite_token)})
+        self.assertIn(expected_path, data['invite_url'])
+
+    def test_cannot_generate_invite_link_for_cancelled_match(self):
+        """Cannot generate invite link for a cancelled match."""
+        self.match.status = MatchStatus.CANCELLED
+        self.match.save(update_fields=['status'])
+
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}),
+            follow=True,
+        )
+        self.assertContains(response, 'This match has been cancelled.')
+        self.match.refresh_from_db()
+        self.assertIsNone(self.match.invite_token)
+
+    def test_cannot_generate_invite_link_for_started_match(self):
+        """Cannot generate invite link for a match that has already started."""
+        Match.objects.filter(pk=self.match.pk).update(date_time=timezone.now() - timedelta(hours=1))
+
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_invite_link', kwargs={'pk': self.match.pk}),
+            follow=True,
+        )
+        self.assertContains(response, 'This match has already started or finished.')
+        self.match.refresh_from_db()
+        self.assertIsNone(self.match.invite_token)
+
+
+class MatchJoinViaLinkParticipationTests(TestCase):
+    """FR16 - Tests for accepting and declining invitations via shareable link (Phase 7)."""
+
+    def setUp(self):
+        self.organizer = User.objects.create_user(
+            username='organizer',
+            email='organizer@example.com',
+            password='testpass123',
+        )
+        self.player = User.objects.create_user(
+            username='player',
+            email='player@example.com',
+            password='testpass123',
+        )
+        self.player_two = User.objects.create_user(
+            username='player_two',
+            email='player2@example.com',
+            password='testpass123',
+        )
+        self.public_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Public Game',
+            date_time=timezone.now() + timedelta(days=2),
+            location='North Arena',
+            skill_level='beginner',
+            max_players=3,
+            visibility='public',
+            invite_token=uuid.uuid4(),
+            invite_active=True,
+        )
+        self.approval_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Private Game',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Private Turf',
+            skill_level='intermediate',
+            max_players=4,
+            visibility='approval_required',
+            invite_token=uuid.uuid4(),
+            invite_active=True,
+        )
+
+    def test_unauthenticated_user_viewing_invite_link_is_redirected_to_login_with_next(self):
+        """Unauthenticated user accessing invite link is redirected to login, preserving 'next'."""
+        invite_path = reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)})
+        response = self.client.get(invite_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+        self.assertIn(f'next={invite_path}', response.url)
+
+    def test_unauthenticated_user_posting_to_invite_link_is_redirected_to_login(self):
+        """Unauthenticated user posting to invite link is redirected to login."""
+        invite_path = reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)})
+        response = self.client.post(invite_path, {'action': 'accept'})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+
+    def test_authenticated_user_can_view_invitation_page_with_details_and_buttons(self):
+        """Authenticated player views match info and Accept/Decline buttons."""
+        self.client.login(username='player', password='testpass123')
+        invite_path = reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)})
+        response = self.client.get(invite_path)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Public Game')
+        self.assertContains(response, 'Accept invitation')
+        self.assertContains(response, 'Decline invitation')
+
+    def test_invalid_token_shows_error_message(self):
+        """Visiting an invalid token string shows appropriate error message."""
+        self.client.login(username='player', password='testpass123')
+        response = self.client.get(
+            reverse('matches:match_join_via_link', kwargs={'token': 'invalid-token-12345'})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This invitation link is invalid.')
+
+    def test_nonexistent_token_shows_error_message(self):
+        """Visiting a valid UUID that does not match any match shows error message."""
+        self.client.login(username='player', password='testpass123')
+        response = self.client.get(
+            reverse('matches:match_join_via_link', kwargs={'token': str(uuid.uuid4())})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This invitation link is invalid.')
+
+    def test_deactivated_link_shows_inactive_message_on_get(self):
+        """GET request to a deactivated link (invite_active=False) displays inactive message."""
+        self.public_match.invite_active = False
+        self.public_match.save(update_fields=['invite_active'])
+
+        self.client.login(username='player', password='testpass123')
+        response = self.client.get(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This invitation link has been deactivated.')
+
+    def test_deactivated_link_rejects_post_response(self):
+        """POST request to a deactivated link is rejected."""
+        self.public_match.invite_active = False
+        self.public_match.save(update_fields=['invite_active'])
+
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertContains(response, 'This invitation link has been deactivated.')
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.player).exists()
+        )
+
+    def test_player_can_accept_invitation_to_public_match(self):
+        """Accepting an invitation to a public match joins directly and records Invitation as ACCEPTED."""
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.public_match.pk}))
+        self.assertTrue(
+            MatchParticipant.objects.filter(
+                match=self.public_match, player=self.player, status=ParticipantStatus.CONFIRMED
+            ).exists()
+        )
+        invitation = Invitation.objects.get(match=self.public_match, player=self.player)
+        self.assertEqual(invitation.status, InvitationStatus.ACCEPTED)
+
+    def test_player_can_accept_invitation_to_approval_required_match_directly(self):
+        """Accepting an invitation to an approval-required match joins directly without needing approval."""
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.approval_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.approval_match.pk}))
+        participant = MatchParticipant.objects.get(match=self.approval_match, player=self.player)
+        self.assertEqual(participant.status, ParticipantStatus.CONFIRMED)
+        invitation = Invitation.objects.get(match=self.approval_match, player=self.player)
+        self.assertEqual(invitation.status, InvitationStatus.ACCEPTED)
+
+    def test_player_can_decline_invitation(self):
+        """Declining an invitation records Invitation as DECLINED without creating a participant."""
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'decline'},
+            follow=True,
+        )
+        self.assertRedirects(response, reverse('matches:match_detail', kwargs={'pk': self.public_match.pk}))
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.player).exists()
+        )
+        invitation = Invitation.objects.get(match=self.public_match, player=self.player)
+        self.assertEqual(invitation.status, InvitationStatus.DECLINED)
+
+    def test_organizer_cannot_accept_own_invitation(self):
+        """Match organizer cannot join their own match via invitation link."""
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertContains(response, 'You are the organizer of this match.')
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.organizer).exists()
+        )
+
+    def test_already_confirmed_player_cannot_accept_again(self):
+        """Player already confirmed in match cannot accept again."""
+        MatchParticipant.objects.create(
+            match=self.public_match,
+            player=self.player,
+            status=ParticipantStatus.CONFIRMED,
+        )
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertContains(response, 'You are already participating in this match.')
+        self.assertEqual(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.player).count(),
+            1,
+        )
+
+    def test_full_public_match_adds_to_waiting_list(self):
+        """Accepting an invitation to a full public match adds player to the waiting list."""
+        u1 = User.objects.create_user(username='u1', email='u1@example.com', password='p')
+        u2 = User.objects.create_user(username='u2', email='u2@example.com', password='p')
+        u3 = User.objects.create_user(username='u3', email='u3@example.com', password='p')
+        MatchParticipant.objects.create(match=self.public_match, player=u1, status=ParticipantStatus.CONFIRMED)
+        MatchParticipant.objects.create(match=self.public_match, player=u2, status=ParticipantStatus.CONFIRMED)
+        MatchParticipant.objects.create(match=self.public_match, player=u3, status=ParticipantStatus.CONFIRMED)
+
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        participant = MatchParticipant.objects.get(match=self.public_match, player=self.player)
+        self.assertEqual(participant.status, ParticipantStatus.WAITING)
+        self.assertContains(response, 'waiting list')
+
+    def test_full_approval_required_match_rejects_invitation(self):
+        """Accepting an invitation to a full approval-required match is rejected."""
+        for i in range(4):
+            u = User.objects.create_user(username=f'usr_{i}', email=f'usr_{i}@example.com', password='p')
+            MatchParticipant.objects.create(match=self.approval_match, player=u, status=ParticipantStatus.CONFIRMED)
+
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.approval_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertContains(response, 'This match is full and cannot accept the invitation.')
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.approval_match, player=self.player).exists()
+        )
+
+    def test_cancelled_match_rejects_invitation(self):
+        """Cannot accept invitation for a cancelled match."""
+        self.public_match.status = MatchStatus.CANCELLED
+        self.public_match.save(update_fields=['status'])
+
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertContains(response, 'This match has been cancelled.')
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.player).exists()
+        )
+
+    def test_started_match_rejects_invitation(self):
+        """Cannot accept invitation for a match that already started."""
+        Match.objects.filter(pk=self.public_match.pk).update(date_time=timezone.now() - timedelta(hours=2))
+
+        self.client.login(username='player', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)}),
+            data={'action': 'accept'},
+            follow=True,
+        )
+        self.assertContains(response, 'This match has already started or finished.')
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.player).exists()
+        )
+
+    def test_get_request_does_not_mutate_participants_or_invitations(self):
+        """GET request to the invitation URL never joins or creates invitations."""
+        self.client.login(username='player', password='testpass123')
+        self.client.get(
+            reverse('matches:match_join_via_link', kwargs={'token': str(self.public_match.invite_token)})
+        )
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=self.public_match, player=self.player).exists()
+        )
+        self.assertFalse(
+            Invitation.objects.filter(match=self.public_match, player=self.player).exists()
+        )
+
 
 
 

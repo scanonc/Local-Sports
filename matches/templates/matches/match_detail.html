@@ -156,6 +156,35 @@
                 {% if match.status != 'cancelled' and user_is_organizer %}
                 <hr class="my-4">
 
+                <h2 class="h5 mb-3">Shareable invitation link</h2>
+                {% if invite_url %}
+                <div class="mb-3">
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" id="invite-link-input" value="{{ invite_url }}" readonly>
+                        <button class="btn btn-outline-primary" type="button" id="copy-invite-link-btn" onclick="navigator.clipboard.writeText(document.getElementById('invite-link-input').value).then(() => { const btn = document.getElementById('copy-invite-link-btn'); const orig = btn.innerText; btn.innerText = 'Copied!'; setTimeout(() => { btn.innerText = orig; }, 2000); });">
+                            Copy link
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small">Anyone with this link can view the match and accept the invitation directly.</span>
+                        <form method="post" action="{% url 'matches:match_invite_link' match.pk %}" class="d-inline ms-auto">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" id="regenerate-invite-link-btn">Regenerate link</button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="mb-3">
+                    <p class="text-muted small mb-2">Generate a shareable link that allows players to accept an invitation to this match directly.</p>
+                    <form method="post" action="{% url 'matches:match_invite_link' match.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary" id="generate-invite-link-btn">Generate invitation link</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <hr class="my-4">
+
                 <h2 class="h5 mb-3">Invite players</h2>
                 <form method="post" action="{% url 'matches:match_invite_players' match.pk %}">
                     {% csrf_token %}
