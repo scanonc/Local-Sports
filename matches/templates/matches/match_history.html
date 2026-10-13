@@ -1,0 +1,40 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">Match history</h1>
+        <p class="text-muted mb-0">Matches you organized or joined that have already ended or were cancelled.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'matches:match_list' %}">Browse matches</a>
+</div>
+
+<div class="row g-3">
+    {% for match in matches %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <h2 class="h5 card-title mb-0">{{ match.title }}</h2>
+                    {% if match.status == 'cancelled' %}
+                    <span class="badge bg-danger">Cancelled</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Finished</span>
+                    {% endif %}
+                </div>
+                <p class="card-text text-muted mb-2">{{ match.date_time }}</p>
+                <p class="card-text mb-1"><strong>Location:</strong> {{ match.location }}</p>
+                <p class="card-text mb-3"><strong>Organizer:</strong> {{ match.organizer }}</p>
+                <a class="btn btn-outline-primary btn-sm mt-auto" href="{% url 'matches:match_detail' match.pk %}">View details</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info mb-0">
+            You do not have any matches in your history yet.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

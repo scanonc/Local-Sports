@@ -143,6 +143,32 @@ class MatchDetailView(DetailView):
         return context
 
 
+class MatchHistoryView(LoginRequiredMixin, ListView):
+    model = Match
+    template_name = 'matches/match_history.html'
+    context_object_name = 'matches'
+
+    def get_queryset(self):
+        user = self.request.user
+        return (
+            Match.objects.filter(
+                Q(organizer=user)
+                | Q(
+                    participants__player=user,
+                    participants__status=ParticipantStatus.CONFIRMED,
+                ),
+            )
+            .filter(
+                Q(date_time__lt=timezone.now())
+                | Q(status=MatchStatus.CANCELLED),
+            )
+            .select_related('organizer')
+            .prefetch_related('participants')
+            .distinct()
+            .order_by('-date_time')
+        )
+
+
 class MatchInviteLinkView(LoginRequiredMixin, View):
     """FR16 - Exclusive view for match organizers to generate or retrieve a shareable invitation link."""
 
@@ -300,7 +326,6 @@ class MatchJoinViaLinkView(LoginRequiredMixin, View):
             messages.error(request, message)
 
         return redirect('matches:match_detail', pk=match.pk)
-
 
 
 class MatchInvitePlayersView(LoginRequiredMixin, View):
@@ -939,4 +964,3 @@ class MatchLeaveView(LoginRequiredMixin, View):
             messages.success(request, 'You have left the waiting list.')
 
         return redirect('matches:match_detail', pk=match.pk)
-

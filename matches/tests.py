@@ -151,6 +151,62 @@ class MatchViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Sunday Match')
 
+    def test_match_history_requires_login(self):
+        response = self.client.get(reverse('matches:match_history'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/users/login/', response.url)
+
+    def test_match_history_shows_past_owned_and_joined_matches_only(self):
+        past_owned = Match.objects.create(
+            organizer=self.organizer,
+            title='Past owned match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=10,
+            visibility='public',
+        )
+        Match.objects.filter(pk=past_owned.pk).update(
+            date_time=timezone.now() - timedelta(days=1),
+        )
+
+        joined_match = Match.objects.create(
+            organizer=self.other_user,
+            title='Past joined match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Community pitch',
+            skill_level='intermediate',
+            max_players=10,
+            visibility='public',
+        )
+        Match.objects.filter(pk=joined_match.pk).update(
+            date_time=timezone.now() - timedelta(hours=1),
+        )
+        MatchParticipant.objects.create(
+            match=joined_match,
+            player=self.organizer,
+            status=ParticipantStatus.CONFIRMED,
+        )
+
+        future_match = Match.objects.create(
+            organizer=self.organizer,
+            title='Future match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Central stadium',
+            skill_level='advanced',
+            max_players=10,
+            visibility='public',
+        )
+
+        self.client.login(username='organizer', password='testpass123')
+        response = self.client.get(reverse('matches:match_history'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Past owned match')
+        self.assertContains(response, 'Past joined match')
+        self.assertNotContains(response, 'Future match')
+
 
 class MatchInvitationViewTests(TestCase):
     def setUp(self):
@@ -1850,7 +1906,5 @@ class MatchJoinViaLinkParticipationTests(TestCase):
         self.assertFalse(
             Invitation.objects.filter(match=self.public_match, player=self.player).exists()
         )
-
-
 
 
