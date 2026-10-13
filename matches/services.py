@@ -176,3 +176,27 @@ def notify_match_cancellation(request, match=None):
                 request,
                 'No confirmed participants to notify.',
             )
+
+
+def generate_match_invite_token(match):
+    """FR16 - Generate or ensure an active unique invite token for the match."""
+    import uuid
+    if not match.invite_token:
+        match.invite_token = uuid.uuid4()
+        match.invite_active = True
+        match.save(update_fields=['invite_token', 'invite_active'])
+    elif not match.invite_active:
+        match.invite_active = True
+        match.save(update_fields=['invite_active'])
+    return match.invite_token
+
+
+def build_match_invite_url(match, request=None):
+    """FR16 - Build the absolute shareable invitation link for the match."""
+    from django.urls import reverse
+    token = generate_match_invite_token(match)
+    path = reverse('matches:match_join_via_link', kwargs={'token': str(token)})
+    if request:
+        return request.build_absolute_uri(path)
+    return path
+

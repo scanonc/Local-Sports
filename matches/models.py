@@ -42,6 +42,14 @@ class Match(models.Model):
 		choices=MatchStatus.choices,
 		default=MatchStatus.ACTIVE,
 	)
+	invite_token = models.UUIDField(
+		null=True,
+		blank=True,
+		unique=True,
+	)
+	invite_active = models.BooleanField(
+		default=True,
+	)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
