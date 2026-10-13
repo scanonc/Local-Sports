@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -6,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views import View
@@ -31,6 +32,7 @@ from .services import (
     notify_attendance_confirmation,
     notify_match_cancellation,
     notify_match_update,
+    process_link_invitation,
 )
 
 from users.models import FavoritePlayer
@@ -191,12 +193,114 @@ class MatchInviteLinkView(LoginRequiredMixin, View):
         return self._generate_link(request, pk)
 
 
-class MatchJoinViaLinkView(View):
-    """FR16 - Public match invitation page accessible via invitation token."""
+class MatchJoinViaLinkView(LoginRequiredMixin, View):
+    """FR16 - Public match invitation landing page accessible via invite token."""
+
+    def _get_match_and_status(self, token):
+        try:
+            token_uuid = uuid.UUID(str(token))
+        except (ValueError, TypeError, AttributeError):
+            return None, 'invalid'
+
+        match = Match.objects.filter(invite_token=token_uuid).first()
+        if not match:
+            return None, 'invalid'
+
+        if not match.invite_active:
+            return match, 'inactive'
+
+        return match, 'valid'
 
     def get(self, request, token):
-        # Full presentation logic to be implemented in Phase 3
-        return redirect('matches:match_list')
+        match, token_status = self._get_match_and_status(token)
+
+        if token_status == 'invalid':
+            return render(request, 'matches/match_invite.html', {
+                'error_message': 'This invitation link is invalid.',
+                'token': token,
+            })
+
+        if token_status == 'inactive':
+            return render(request, 'matches/match_invite.html', {
+                'error_message': 'This invitation link has been deactivated.',
+                'match': match,
+                'token': token,
+            })
+
+        if match.status == MatchStatus.CANCELLED:
+            return render(request, 'matches/match_invite.html', {
+                'error_message': 'This match has been cancelled by the organizer.',
+                'match': match,
+                'token': token,
+            })
+
+        if match.has_started:
+            return render(request, 'matches/match_invite.html', {
+                'error_message': 'This match has already started or finished.',
+                'match': match,
+                'token': token,
+            })
+
+        user = request.user
+        user_is_organizer = match.organizer_id == user.id
+
+        participant = MatchParticipant.objects.filter(
+            match=match,
+            player=user,
+        ).first()
+
+        user_is_confirmed = (
+            participant is not None
+            and participant.status == ParticipantStatus.CONFIRMED
+        )
+        user_is_waiting = (
+            participant is not None
+            and participant.status == ParticipantStatus.WAITING
+        )
+
+        can_join = True
+        notice_message = None
+
+        if match.is_full:
+            if match.visibility != MatchVisibility.PUBLIC:
+                can_join = False
+                notice_message = 'This match is full and no longer admits participants.'
+            else:
+                notice_message = 'This match is currently full. Accepting this invitation will place you on the waiting list.'
+
+        context = {
+            'match': match,
+            'token': token,
+            'user_is_organizer': user_is_organizer,
+            'user_is_confirmed': user_is_confirmed,
+            'user_is_waiting': user_is_waiting,
+            'can_join': can_join,
+            'notice_message': notice_message,
+        }
+        return render(request, 'matches/match_invite.html', context)
+
+    def post(self, request, token):
+        match, token_status = self._get_match_and_status(token)
+
+        if token_status == 'invalid':
+            messages.error(request, 'This invitation link is invalid.')
+            return redirect('matches:match_list')
+
+        if token_status == 'inactive':
+            messages.error(request, 'This invitation link has been deactivated.')
+            return redirect('matches:match_detail', pk=match.pk) if match else redirect('matches:match_list')
+
+        action = request.POST.get('action', 'accept').strip().lower()
+
+        success, message, participant = process_link_invitation(match, request.user, action)
+
+        if success:
+            messages.success(request, message)
+        else:
+            messages.error(request, message)
+
+        return redirect('matches:match_detail', pk=match.pk)
+
 
 
 class MatchInvitePlayersView(LoginRequiredMixin, View):
