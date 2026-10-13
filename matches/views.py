@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
@@ -24,6 +26,8 @@ from .models import (
     ParticipantStatus,
 )
 from .services import (
+    build_match_invite_url,
+    generate_match_invite_token,
     notify_attendance_confirmation,
     notify_match_cancellation,
     notify_match_update,
@@ -129,8 +133,70 @@ class MatchDetailView(DetailView):
                 match=self.object,
                 status=InvitationStatus.PENDING,
             ).exists()
+            if self.object.invite_token and self.object.invite_active:
+                context['invite_url'] = self.request.build_absolute_uri(
+                    reverse('matches:match_join_via_link', kwargs={'token': str(self.object.invite_token)})
+                )
 
         return context
+
+
+class MatchInviteLinkView(LoginRequiredMixin, View):
+    """FR16 - Exclusive view for match organizers to generate or retrieve a shareable invitation link."""
+
+    def _generate_link(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        is_json = (
+            request.headers.get('x-requested-with') == 'XMLHttpRequest'
+            or 'application/json' in request.headers.get('Accept', '')
+            or request.content_type == 'application/json'
+            or request.GET.get('format') == 'json'
+        )
+
+        if match.organizer_id != request.user.id:
+            if is_json:
+                return JsonResponse({'error': 'Only the organizer can generate invitation links.'}, status=403)
+            messages.error(request, 'Only the organizer can generate invitation links.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.status == MatchStatus.CANCELLED:
+            if is_json:
+                return JsonResponse({'error': 'This match has been cancelled.'}, status=400)
+            messages.error(request, 'This match has been cancelled.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if match.has_started:
+            if is_json:
+                return JsonResponse({'error': 'This match has already started or finished.'}, status=400)
+            messages.error(request, 'This match has already started or finished.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        invite_url = build_match_invite_url(match, request)
+
+        if is_json:
+            return JsonResponse({
+                'invite_url': invite_url,
+                'invite_token': str(match.invite_token),
+                'status': 'success',
+            })
+
+        messages.success(request, f'Shareable invitation link generated: {invite_url}')
+        return redirect('matches:match_detail', pk=match.pk)
+
+    def post(self, request, pk):
+        return self._generate_link(request, pk)
+
+    def get(self, request, pk):
+        return self._generate_link(request, pk)
+
+
+class MatchJoinViaLinkView(View):
+    """FR16 - Public match invitation page accessible via invitation token."""
+
+    def get(self, request, token):
+        # Full presentation logic to be implemented in Phase 3
+        return redirect('matches:match_list')
 
 
 class MatchInvitePlayersView(LoginRequiredMixin, View):
