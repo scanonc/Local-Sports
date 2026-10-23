@@ -127,3 +127,33 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
   background: #FDEAEA;
   color: #8A2E2E;
 }
+
+/* --- Match chat (FR22) --- */
+.chat-thread {
+  max-height: 24rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 0.5rem;
+}
+
+.chat-message {
+  padding: 0.5rem 0.75rem;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 0.5rem;
+}
+
+.chat-message-own {
+  background: #E7F5EC;
+  border-color: #BFE3CB;
+}
+
+.chat-message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
