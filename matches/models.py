@@ -62,10 +62,40 @@ class Match(models.Model):
 	def get_absolute_url(self):
 		return reverse('matches:match_detail', kwargs={'pk': self.pk})
 
+	def _date_time_is_being_set(self):
+		"""True when date_time is new or differs from what is stored.
+
+		The "cannot be in the past" rule exists to stop people from
+		scheduling a match in the past. It must not block saving a match
+		whose date was already valid and has simply passed in the
+		meantime (cancelling it, changing its status, storing its
+		invite token, registering its result, ...).
+		"""
+		if self.pk is None or self._state.adding:
+			return True
+
+		stored = (
+			Match.objects.filter(pk=self.pk)
+			.values_list('date_time', flat=True)
+			.first()
+		)
+		if stored is None:
+			return True
+
+		# The edit form only has minute precision, so compare at that level.
+		def to_minute(value):
+			return value.replace(second=0, microsecond=0)
+
+		return to_minute(stored) != to_minute(self.date_time)
+
 	def clean(self):
 		errors = {}
 
-		if self.date_time and self.date_time < timezone.now():
+		if (
+			self.date_time
+			and self.date_time < timezone.now()
+			and self._date_time_is_being_set()
+		):
 			errors['date_time'] = 'Match date and time cannot be in the past.'
 
 		if self.max_players is not None and self.max_players < 2:
