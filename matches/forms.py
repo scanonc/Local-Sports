@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Match
+from .models import Match, MatchMessage
 
 
 class MatchForm(forms.ModelForm):
@@ -21,4 +21,23 @@ class MatchForm(forms.ModelForm):
             'skill_level': forms.Select(attrs={'class': 'form-select'}),
             'max_players': forms.NumberInput(attrs={'class': 'form-control', 'min': 2}),
             'visibility': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class MatchMessageForm(forms.ModelForm):
+    """FR22 - Form to publish a message in a match thread."""
+
+    class Meta:
+        model = MatchMessage
+        fields = ['content']
+        labels = {'content': 'Message'}
+        widgets = {
+            'content': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 2,
+                    'maxlength': MatchMessage.MAX_LENGTH,
+                    'placeholder': 'Write a message to the match thread...',
+                }
+            ),
         }
