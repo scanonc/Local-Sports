@@ -169,6 +169,36 @@ class MatchParticipant(models.Model):
 	def __str__(self):
 		return f'{self.player} - {self.match} ({self.status})'
 
+
+class MatchMessage(models.Model):
+	"""FR22 - Match chat system.
+
+	A simple message thread attached to a match (no real time: messages are
+	read when the match page is opened or reloaded).
+	"""
+
+	MAX_LENGTH = 500
+
+	match = models.ForeignKey(
+		Match,
+		on_delete=models.CASCADE,
+		related_name='chat_messages',
+	)
+	author = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name='match_messages',
+	)
+	content = models.TextField(max_length=MAX_LENGTH)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['created_at', 'pk']
+
+	def __str__(self):
+		return f'{self.author} in {self.match}: {self.content[:40]}'
+
+
 class JoinRequestStatus(models.TextChoices):
     PENDING = 'pending', 'Pending'
     ACCEPTED = 'accepted', 'Accepted'

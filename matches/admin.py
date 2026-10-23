@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Invitation, Match, MatchParticipant
+from .models import Invitation, Match, MatchMessage, MatchParticipant
 
 
 @admin.register(Invitation)
@@ -27,6 +27,13 @@ class MatchAdmin(admin.ModelAdmin):
 	search_fields = ('title', 'location', 'organizer__username', 'organizer__email')
 	ordering = ('date_time',)
 	readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(MatchMessage)
+class MatchMessageAdmin(admin.ModelAdmin):
+	list_display = ('match', 'author', 'created_at')
+	search_fields = ('match__title', 'author__username', 'content')
+	readonly_fields = ('created_at',)
 
 
 @admin.register(MatchParticipant)
