@@ -1,0 +1,52 @@
+{# FR22 - Match chat thread. Included from match_detail.html. #}
+{% if user_can_use_chat %}
+<hr class="my-4">
+
+<section id="match-chat">
+    <h2 class="h5 mb-3">Match chat</h2>
+
+    {% if chat_messages %}
+    <div id="chat-thread" class="chat-thread mb-3">
+        {% for chat_message in chat_messages %}
+        <div class="chat-message{% if chat_message.author_id == user.id %} chat-message-own{% endif %}">
+            <div class="d-flex justify-content-between align-items-baseline gap-3">
+                <span class="fw-semibold">
+                    {{ chat_message.author }}
+                    {% if chat_message.author_id == match.organizer_id %}
+                    <span class="badge rounded-pill bg-light text-dark border border-secondary ms-1">Organizer</span>
+                    {% endif %}
+                </span>
+                <small class="text-muted">{{ chat_message.created_at|date:"M j, H:i" }}</small>
+            </div>
+            <p class="mb-0 chat-message-text">{{ chat_message.content }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No messages yet. Start the conversation.</p>
+    {% endif %}
+
+    {% if match.status == 'cancelled' %}
+    <p class="text-muted mb-0">This match was cancelled, so the chat is read-only.</p>
+    {% else %}
+    <form method="post" action="{% url 'matches:match_message_create' match.pk %}">
+        {% csrf_token %}
+        <label class="form-label visually-hidden" for="{{ chat_form.content.id_for_label }}">Message</label>
+        {{ chat_form.content }}
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <small class="text-muted">Up to 500 characters. New messages appear when you reload the page.</small>
+            <button type="submit" class="btn btn-primary btn-sm">Send message</button>
+        </div>
+    </form>
+    {% endif %}
+</section>
+
+<script>
+    (function () {
+        var thread = document.getElementById('chat-thread');
+        if (thread) {
+            thread.scrollTop = thread.scrollHeight;
+        }
+    })();
+</script>
+{% endif %}

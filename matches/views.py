@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
-from .forms import MatchForm
+from .forms import MatchForm, MatchMessageForm
 from .models import (
     JoinRequest,
     JoinRequestStatus,
@@ -39,6 +39,21 @@ from users.models import FavoritePlayer
 from users.models import Notification
 
 User = get_user_model()
+
+
+def user_can_use_match_chat(match, user):
+    """FR22 - Only the organizer and confirmed participants use the match chat."""
+    if not user.is_authenticated:
+        return False
+
+    if match.organizer_id == user.id:
+        return True
+
+    return MatchParticipant.objects.filter(
+        match=match,
+        player=user,
+        status=ParticipantStatus.CONFIRMED,
+    ).exists()
 
 
 class MatchDetailView(DetailView):
@@ -120,6 +135,12 @@ class MatchDetailView(DetailView):
             if user.is_authenticated
             else None
         )
+
+        user_can_use_chat = user_can_use_match_chat(self.object, user)
+        context['user_can_use_chat'] = user_can_use_chat
+        if user_can_use_chat:
+            context['chat_messages'] = self.object.chat_messages.select_related('author')
+            context['chat_form'] = MatchMessageForm()
 
         if user_is_organizer:
             context['pending_join_requests'] = JoinRequest.objects.filter(
@@ -470,6 +491,43 @@ class MatchInvitationResponseView(LoginRequiredMixin, View):
 
         messages.success(request, message)
         return redirect('matches:match_detail', pk=match.pk)
+
+
+class MatchMessageCreateView(LoginRequiredMixin, View):
+    """FR22 - Publish a message in the thread of a match."""
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+        detail_url = f"{reverse('matches:match_detail', kwargs={'pk': match.pk})}#match-chat"
+
+        if not user_can_use_match_chat(match, request.user):
+            messages.error(
+                request,
+                'Only the organizer and confirmed participants can use the match chat.',
+            )
+            return redirect(detail_url)
+
+        if match.status == MatchStatus.CANCELLED:
+            messages.error(
+                request,
+                'This match has been cancelled, so its chat is read-only.',
+            )
+            return redirect(detail_url)
+
+        form = MatchMessageForm(request.POST)
+
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.match = match
+            message.author = request.user
+            message.save()
+        else:
+            messages.error(
+                request,
+                'The message cannot be empty or longer than 500 characters.',
+            )
+
+        return redirect(detail_url)
 
 
 class MatchListView(ListView):
