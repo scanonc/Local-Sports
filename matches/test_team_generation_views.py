@@ -187,6 +187,41 @@ class MatchTeamGenerationViewTests(TestCase):
 			reverse('matches:match_detail', kwargs={'pk': self.match.pk}),
 		)
 
+	def test_organizer_sees_team_generation_control(self):
+		self.client.force_login(self.organizer)
+
+		response = self.client.get(
+			reverse('matches:match_detail', kwargs={'pk': self.match.pk})
+		)
+
+		self.assertContains(response, 'Generate teams')
+		self.assertContains(response, 'Generate teams now?')
+
+	def test_other_users_do_not_see_team_generation_control(self):
+		self.client.force_login(self.other_user)
+
+		response = self.client.get(
+			reverse('matches:match_detail', kwargs={'pk': self.match.pk})
+		)
+
+		self.assertNotContains(response, 'Generate teams')
+
+	def test_detail_displays_generated_teams_and_closed_state(self):
+		self.client.force_login(self.organizer)
+		self.client.post(
+			reverse('matches:match_generate_teams', kwargs={'pk': self.match.pk}),
+			data={'confirm': 'yes'},
+		)
+
+		response = self.client.get(
+			reverse('matches:match_detail', kwargs={'pk': self.match.pk})
+		)
+
+		self.assertContains(response, 'Closed')
+		self.assertContains(response, 'Team A')
+		self.assertContains(response, 'Team B')
+		self.assertNotContains(response, 'Edit match')
+
 	def test_leaving_confirmed_participant_undoes_teams_and_reopens_match(self):
 		self.client.force_login(self.organizer)
 		self.client.post(

@@ -109,6 +109,40 @@ class MatchDetailView(DetailView):
         context['attendance_participants'] = self.object.participants.filter(
             status=ParticipantStatus.CONFIRMED,
         ).select_related('player')
+        context['team_a_assignments'] = self.object.team_assignments.filter(
+            team='A',
+        ).select_related('participant__player')
+        context['team_b_assignments'] = self.object.team_assignments.filter(
+            team='B',
+        ).select_related('participant__player')
+
+        if self.object.is_closed:
+            context['team_generation_block_reason'] = (
+                'Teams have already been generated.'
+            )
+        elif self.object.has_started:
+            context['team_generation_block_reason'] = (
+                'Teams can only be generated before the match starts.'
+            )
+        elif self.object.confirmed_participants_count < 6:
+            context['team_generation_block_reason'] = (
+                'At least 6 confirmed participants are required.'
+            )
+        elif self.object.confirmed_participants_count % 2:
+            context['team_generation_block_reason'] = (
+                'The number of confirmed participants must be even.'
+            )
+        elif self.object.status == MatchStatus.CANCELLED:
+            context['team_generation_block_reason'] = (
+                'Cancelled matches cannot generate teams.'
+            )
+        else:
+            context['team_generation_block_reason'] = None
+
+        context['can_generate_teams'] = (
+            user_is_organizer
+            and context['team_generation_block_reason'] is None
+        )
 
         context['favorite_player_ids'] = (
             set(

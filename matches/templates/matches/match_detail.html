@@ -11,6 +11,12 @@
                         <strong>Notice:</strong> This match has been cancelled by the organizer. No further actions can be taken.
                     </div>
                 </div>
+                {% elif match.status == 'closed' %}
+                <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+                    <div>
+                        <strong>Notice:</strong> Teams have been generated. This match is closed and cannot accept new participants.
+                    </div>
+                </div>
                 {% endif %}
 
                 <h1 class="h3 mb-3">{{ match.title }}</h1>
@@ -19,6 +25,8 @@
                     <dd class="col-sm-8">
                         {% if match.status == 'cancelled' %}
                         <span class="badge bg-danger">Cancelled</span>
+                        {% elif match.status == 'closed' %}
+                        <span class="badge bg-info text-dark">Closed</span>
                         {% else %}
                         <span class="badge bg-success">Active</span>
                         {% endif %}
@@ -53,12 +61,33 @@
                     {% if match.status == 'cancelled' %}
                     <span class="align-self-center text-muted">This match is cancelled.</span>
                     {% elif user_is_organizer %}
+                    {% if match.status != 'closed' %}
                     <a class="btn btn-outline-primary" href="{% url 'matches:match_update' match.pk %}">Edit match</a>
+                    {% endif %}
                     <form method="post" action="{% url 'matches:match_cancel' match.pk %}" onsubmit="return confirm('Are you sure you want to cancel this match? Confirmed participants will be notified and this action cannot be undone.');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-danger">Cancel match</button>
                     </form>
+                    {% if can_generate_teams %}
+                    <form method="post" action="{% url 'matches:match_generate_teams' match.pk %}" onsubmit="return confirm('Generate teams now? This will close the match and cannot be undone unless a participant leaves.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="confirm" value="yes">
+                        <button type="submit" class="btn btn-primary">Generate teams</button>
+                    </form>
+                    {% else %}
+                    <button type="button" class="btn btn-outline-secondary" disabled title="{{ team_generation_block_reason }}">Generate teams</button>
+                    <span class="align-self-center text-muted small">{{ team_generation_block_reason }}</span>
+                    {% endif %}
                     <span class="align-self-center text-muted ms-2">You are the organizer of this match.</span>
+                    {% elif match.status == 'closed' %}
+                    {% if user_is_participant %}
+                    <form method="post" action="{% url 'matches:match_leave' match.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger">Leave match</button>
+                    </form>
+                    {% else %}
+                    <span class="align-self-center text-muted">This match is closed and does not accept new participants.</span>
+                    {% endif %}
                     {% elif user.is_authenticated %}
                         {% if pending_invitation %}
                         <span class="align-self-center text-info">You were invited by {{ pending_invitation.organizer }}.</span>
@@ -194,6 +223,29 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Send invitation</button>
                 </form>
+                {% endif %}
+
+                {% if team_a_assignments or team_b_assignments %}
+                <hr class="my-4">
+                <h2 class="h5 mb-3">Teams</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h3 class="h6">Team A</h3>
+                        <ul class="list-group">
+                            {% for assignment in team_a_assignments %}
+                            <li class="list-group-item">{{ assignment.participant.player }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h3 class="h6">Team B</h3>
+                        <ul class="list-group">
+                            {% for assignment in team_b_assignments %}
+                            <li class="list-group-item">{{ assignment.participant.player }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
                 {% endif %}
 
                 <hr class="my-4">
