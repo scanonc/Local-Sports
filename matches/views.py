@@ -23,6 +23,7 @@ from .models import (
     MatchParticipant,
     MatchSkillLevel,
     MatchStatus,
+    MatchTeamAssignment,
     MatchVisibility,
     ParticipantStatus,
 )
@@ -1040,32 +1041,41 @@ class MatchLeaveView(LoginRequiredMixin, View):
     """
 
     def post(self, request, pk):
-        match = get_object_or_404(Match, pk=pk)
+        with transaction.atomic():
+            match = get_object_or_404(
+                Match.objects.select_for_update(),
+                pk=pk,
+            )
+            participant = MatchParticipant.objects.select_for_update().filter(
+                match=match,
+                player=request.user,
+                status__in=[ParticipantStatus.CONFIRMED, ParticipantStatus.WAITING],
+            ).first()
 
-        participant = MatchParticipant.objects.filter(
-            match=match,
-            player=request.user,
-            status__in=[ParticipantStatus.CONFIRMED, ParticipantStatus.WAITING],
-        ).first()
+            if not participant:
+                messages.error(request, 'You are not currently part of this match.')
+                return redirect('matches:match_detail', pk=match.pk)
 
-        if not participant:
-            messages.error(request, 'You are not currently part of this match.')
-            return redirect('matches:match_detail', pk=match.pk)
+            was_confirmed = participant.status == ParticipantStatus.CONFIRMED
 
-        was_confirmed = participant.status == ParticipantStatus.CONFIRMED
+            if was_confirmed and match.has_generated_teams:
+                MatchTeamAssignment.objects.filter(match=match).delete()
+                match.status = MatchStatus.ACTIVE
+                match.save(update_fields=['status', 'updated_at'])
 
-        participant.status = ParticipantStatus.LEFT
-        participant.attendance_confirmed = False
-        participant.save(
-            update_fields=['status', 'attendance_confirmed', 'updated_at']
-        )
+            participant.status = ParticipantStatus.LEFT
+            participant.attendance_confirmed = False
+            participant.save(
+                update_fields=['status', 'attendance_confirmed', 'updated_at']
+            )
 
-        if was_confirmed:
-            match.promote_from_waiting_list()
-            messages.success(request, 'You have left the match.')
-        else:
-            messages.success(request, 'You have left the waiting list.')
+            if was_confirmed:
+                match.promote_from_waiting_list()
+                message = 'You have left the match.'
+            else:
+                message = 'You have left the waiting list.'
 
+        messages.success(request, message)
         return redirect('matches:match_detail', pk=match.pk)
 
 

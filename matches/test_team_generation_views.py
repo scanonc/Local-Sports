@@ -186,3 +186,82 @@ class MatchTeamGenerationViewTests(TestCase):
 			response.url,
 			reverse('matches:match_detail', kwargs={'pk': self.match.pk}),
 		)
+
+	def test_leaving_confirmed_participant_undoes_teams_and_reopens_match(self):
+		self.client.force_login(self.organizer)
+		self.client.post(
+			reverse('matches:match_generate_teams', kwargs={'pk': self.match.pk}),
+			data={'confirm': 'yes'},
+		)
+		participant = self.match.participants.first()
+		self.client.force_login(participant.player)
+
+		response = self.client.post(
+			reverse('matches:match_leave', kwargs={'pk': self.match.pk})
+		)
+
+		self.assertEqual(response.status_code, 302)
+		self.match.refresh_from_db()
+		self.assertEqual(self.match.status, MatchStatus.ACTIVE)
+		self.assertFalse(
+			MatchTeamAssignment.objects.filter(match=self.match).exists()
+		)
+		participant.refresh_from_db()
+		self.assertEqual(participant.status, ParticipantStatus.LEFT)
+
+	def test_leaving_without_teams_keeps_match_open(self):
+		participant = self.match.participants.first()
+		self.client.force_login(participant.player)
+
+		response = self.client.post(
+			reverse('matches:match_leave', kwargs={'pk': self.match.pk})
+		)
+
+		self.assertEqual(response.status_code, 302)
+		self.match.refresh_from_db()
+		self.assertEqual(self.match.status, MatchStatus.ACTIVE)
+		self.assertFalse(self.match.has_generated_teams)
+
+	def test_leaving_with_teams_promotes_waiting_player_after_reopening(self):
+		waiting_player = User.objects.create_user(
+			username='waiting',
+			email='waiting@example.com',
+			password='testpass123',
+		)
+		MatchParticipant.objects.create(
+			match=self.match,
+			player=waiting_player,
+			status=ParticipantStatus.WAITING,
+		)
+		self.client.force_login(self.organizer)
+		self.client.post(
+			reverse('matches:match_generate_teams', kwargs={'pk': self.match.pk}),
+			data={'confirm': 'yes'},
+		)
+		participant = self.match.participants.filter(
+			status=ParticipantStatus.CONFIRMED
+		).first()
+		self.client.force_login(participant.player)
+
+		self.client.post(
+			reverse('matches:match_leave', kwargs={'pk': self.match.pk})
+		)
+
+		waiting_player_participant = MatchParticipant.objects.get(
+			match=self.match,
+			player=waiting_player,
+		)
+		self.assertEqual(
+			waiting_player_participant.status,
+			ParticipantStatus.CONFIRMED,
+		)
+		self.match.refresh_from_db()
+		self.assertEqual(self.match.status, MatchStatus.ACTIVE)
+		self.client.force_login(self.organizer)
+		response = self.client.post(
+			reverse('matches:match_generate_teams', kwargs={'pk': self.match.pk}),
+			data={'confirm': 'yes'},
+		)
+		self.assertEqual(response.status_code, 302)
+		self.match.refresh_from_db()
+		self.assertEqual(self.match.status, MatchStatus.CLOSED)
