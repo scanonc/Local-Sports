@@ -353,7 +353,7 @@ class MatchInvitationViewTests(TestCase):
             date_time=timezone.now() + timedelta(days=1),
             location='Local field',
             skill_level='beginner',
-            max_players=4,
+            max_players=6,
             visibility='public',
         )
 
@@ -511,7 +511,7 @@ class MatchJoinViewTests(TestCase):
             date_time=timezone.now() + timedelta(days=1),
             location='Local field',
             skill_level='beginner',
-            max_players=2,
+            max_players=6,
             visibility='public',
         )
         self.approval_match = Match.objects.create(
@@ -571,11 +571,17 @@ class MatchJoinViewTests(TestCase):
         )
 
     def test_joining_full_match_goes_to_waiting_list(self):
-        other_player = User.objects.create_user(
-            username='other_player', email='other_player@example.com', password='testpass123'
-        )
         MatchParticipant.objects.create(match=self.public_match, player=self.player)
-        MatchParticipant.objects.create(match=self.public_match, player=other_player)
+        for index in range(5):
+            other_player = User.objects.create_user(
+                username=f'other_player_{index}',
+                email=f'other_player_{index}@example.com',
+                password='testpass123',
+            )
+            MatchParticipant.objects.create(
+                match=self.public_match,
+                player=other_player,
+            )
         third_player = User.objects.create_user(
             username='third_player', email='third_player@example.com', password='testpass123'
         )
@@ -853,7 +859,7 @@ class MatchValidationRegressionTests(TestCase):
             date_time=timezone.now() + timedelta(days=2),
             location='Local field',
             skill_level='beginner',
-            max_players=3,
+            max_players=6,
             visibility='public',
         )
         MatchParticipant.objects.create(
@@ -879,7 +885,7 @@ class MatchValidationRegressionTests(TestCase):
             date_time=timezone.now() + timedelta(days=3),
             location='Local field',
             skill_level='beginner',
-            max_players=4,
+            max_players=6,
             visibility='public',
         )
         MatchParticipant.objects.create(
@@ -905,7 +911,7 @@ class MatchValidationRegressionTests(TestCase):
             date_time=timezone.now() + timedelta(days=4),
             location='Local field',
             skill_level='beginner',
-            max_players=5,
+            max_players=6,
             visibility='approval_required',
         )
 
@@ -948,7 +954,7 @@ class WaitingListTests(TestCase):
             date_time=timezone.now() + timedelta(days=1),
             location='Local field',
             skill_level='beginner',
-            max_players=2,
+            max_players=6,
             visibility='public',
         )
         MatchParticipant.objects.create(
@@ -957,6 +963,17 @@ class WaitingListTests(TestCase):
         MatchParticipant.objects.create(
             match=self.match, player=self.player_a2, status=ParticipantStatus.CONFIRMED
         )
+        for index in range(4):
+            extra_player = User.objects.create_user(
+                username=f'extra_player_{index}',
+                email=f'extra_player_{index}@example.com',
+                password='testpass123',
+            )
+            MatchParticipant.objects.create(
+                match=self.match,
+                player=extra_player,
+                status=ParticipantStatus.CONFIRMED,
+            )
 
     def test_joining_full_match_adds_to_waiting_list(self):
         self.client.login(username='player_b', password='testpass123')
@@ -1028,7 +1045,7 @@ class AutomaticReplacementTests(TestCase):
             date_time=timezone.now() + timedelta(days=1),
             location='Local field',
             skill_level='beginner',
-            max_players=2,
+            max_players=6,
             visibility='public',
         )
         MatchParticipant.objects.create(
@@ -1037,6 +1054,17 @@ class AutomaticReplacementTests(TestCase):
         MatchParticipant.objects.create(
             match=self.match, player=self.player_a2, status=ParticipantStatus.CONFIRMED
         )
+        for index in range(4):
+            extra_player = User.objects.create_user(
+                username=f'replacement_extra_{index}',
+                email=f'replacement_extra_{index}@example.com',
+                password='testpass123',
+            )
+            MatchParticipant.objects.create(
+                match=self.match,
+                player=extra_player,
+                status=ParticipantStatus.CONFIRMED,
+            )
         MatchParticipant.objects.create(
             match=self.match, player=self.player_b, status=ParticipantStatus.WAITING
         )
@@ -1077,7 +1105,7 @@ class AutomaticReplacementTests(TestCase):
                 'date_time': self.match.date_time.strftime('%Y-%m-%dT%H:%M'),
                 'location': self.match.location,
                 'skill_level': self.match.skill_level,
-                'max_players': 3,
+                'max_players': 8,
                 'visibility': self.match.visibility,
             },
         )
@@ -1085,7 +1113,7 @@ class AutomaticReplacementTests(TestCase):
         player_b = MatchParticipant.objects.get(match=self.match, player=self.player_b)
         player_c = MatchParticipant.objects.get(match=self.match, player=self.player_c)
         self.assertEqual(player_b.status, ParticipantStatus.CONFIRMED)
-        self.assertEqual(player_c.status, ParticipantStatus.WAITING)
+        self.assertEqual(player_c.status, ParticipantStatus.CONFIRMED)
 
 
 class MatchCancelViewTests(TestCase):
@@ -1437,7 +1465,7 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
             date_time=self.match_time,
             location='Main Stadium',
             skill_level='intermediate',
-            max_players=5,
+            max_players=6,
             visibility='public',
         )
 
@@ -1470,7 +1498,7 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
                 'date_time': new_time.strftime('%Y-%m-%dT%H:%M'),
                 'location': 'Secondary Arena',
                 'skill_level': 'intermediate',
-                'max_players': 5,
+                'max_players': 6,
                 'visibility': 'public',
             },
         )
@@ -1778,7 +1806,7 @@ class MatchJoinViaLinkParticipationTests(TestCase):
             date_time=timezone.now() + timedelta(days=2),
             location='North Arena',
             skill_level='beginner',
-            max_players=3,
+            max_players=6,
             visibility='public',
             invite_token=uuid.uuid4(),
             invite_active=True,
@@ -1789,7 +1817,7 @@ class MatchJoinViaLinkParticipationTests(TestCase):
             date_time=timezone.now() + timedelta(days=2),
             location='Private Turf',
             skill_level='intermediate',
-            max_players=4,
+            max_players=6,
             visibility='approval_required',
             invite_token=uuid.uuid4(),
             invite_active=True,
@@ -1949,9 +1977,15 @@ class MatchJoinViaLinkParticipationTests(TestCase):
         u1 = User.objects.create_user(username='u1', email='u1@example.com', password='p')
         u2 = User.objects.create_user(username='u2', email='u2@example.com', password='p')
         u3 = User.objects.create_user(username='u3', email='u3@example.com', password='p')
+        u4 = User.objects.create_user(username='u4', email='u4@example.com', password='p')
+        u5 = User.objects.create_user(username='u5', email='u5@example.com', password='p')
+        u6 = User.objects.create_user(username='u6', email='u6@example.com', password='p')
         MatchParticipant.objects.create(match=self.public_match, player=u1, status=ParticipantStatus.CONFIRMED)
         MatchParticipant.objects.create(match=self.public_match, player=u2, status=ParticipantStatus.CONFIRMED)
         MatchParticipant.objects.create(match=self.public_match, player=u3, status=ParticipantStatus.CONFIRMED)
+        MatchParticipant.objects.create(match=self.public_match, player=u4, status=ParticipantStatus.CONFIRMED)
+        MatchParticipant.objects.create(match=self.public_match, player=u5, status=ParticipantStatus.CONFIRMED)
+        MatchParticipant.objects.create(match=self.public_match, player=u6, status=ParticipantStatus.CONFIRMED)
 
         self.client.login(username='player', password='testpass123')
         response = self.client.post(
@@ -1965,7 +1999,7 @@ class MatchJoinViaLinkParticipationTests(TestCase):
 
     def test_full_approval_required_match_rejects_invitation(self):
         """Accepting an invitation to a full approval-required match is rejected."""
-        for i in range(4):
+        for i in range(6):
             u = User.objects.create_user(username=f'usr_{i}', email=f'usr_{i}@example.com', password='p')
             MatchParticipant.objects.create(match=self.approval_match, player=u, status=ParticipantStatus.CONFIRMED)
 

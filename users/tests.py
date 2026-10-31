@@ -40,7 +40,7 @@ class NotificationModelTests(TestCase):
             date_time=timezone.now() + timedelta(days=2),
             location='Court 1',
             skill_level='beginner',
-            max_players=4,
+            max_players=6,
             visibility=MatchVisibility.PUBLIC,
         )
 

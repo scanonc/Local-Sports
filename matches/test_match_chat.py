@@ -33,7 +33,7 @@ class MatchChatTests(TestCase):
             date_time=timezone.now() + timedelta(days=2),
             location='Local field',
             skill_level='beginner',
-            max_players=2,
+            max_players=6,
             visibility='public',
         )
         self._join(self.player, ParticipantStatus.CONFIRMED)
@@ -166,7 +166,7 @@ class MatchChatTests(TestCase):
             date_time=timezone.now() + timedelta(days=3),
             location='Other field',
             skill_level='beginner',
-            max_players=2,
+            max_players=6,
             visibility='public',
         )
         MatchMessage.objects.create(match=other_match, author=self.organizer, content='elsewhere')
