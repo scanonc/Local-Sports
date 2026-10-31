@@ -20,6 +20,8 @@ from .models import (
     Match,
     MatchParticipant,
     MatchStatus,
+    MatchTeam,
+    MatchTeamAssignment,
     MatchVisibility,
     ParticipantStatus,
 )
@@ -62,6 +64,36 @@ class MatchModelTests(TestCase):
         )
 
         self.assertEqual(match.organizer, self.user)
+
+    def test_closed_match_status_and_team_assignment_are_persisted(self):
+        match = Match.objects.create(
+            organizer=self.user,
+            title='Sunday Match',
+            date_time=timezone.now() + timedelta(days=1),
+            location='Local field',
+            skill_level='beginner',
+            max_players=6,
+            visibility='public',
+            status=MatchStatus.CLOSED,
+        )
+        participant = MatchParticipant.objects.create(
+            match=match,
+            player=User.objects.create_user(
+                username='player',
+                email='player@example.com',
+                password='testpass123',
+            ),
+        )
+        assignment = MatchTeamAssignment.objects.create(
+            match=match,
+            participant=participant,
+            team=MatchTeam.A,
+        )
+
+        match.refresh_from_db()
+        self.assertTrue(match.is_closed)
+        self.assertTrue(match.has_generated_teams)
+        self.assertEqual(match.team_assignments.get(), assignment)
 
     def test_match_rejects_invalid_player_limits(self):
         invalid_limits = [5, 7, 42, 4, 0, -2]
@@ -1991,4 +2023,3 @@ class MatchJoinViaLinkParticipationTests(TestCase):
         self.assertFalse(
             Invitation.objects.filter(match=self.public_match, player=self.player).exists()
         )
-

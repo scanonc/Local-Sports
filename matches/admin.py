@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Invitation, Match, MatchMessage, MatchParticipant
+from .models import (
+	Invitation,
+	Match,
+	MatchMessage,
+	MatchParticipant,
+	MatchTeamAssignment,
+)
 
 
 @admin.register(Invitation)
@@ -43,3 +49,10 @@ class MatchParticipantAdmin(admin.ModelAdmin):
 	search_fields = ('match__title', 'player__username', 'player__email')
 	ordering = ('-joined_at',)
 	readonly_fields = ('joined_at', 'updated_at')
+
+
+@admin.register(MatchTeamAssignment)
+class MatchTeamAssignmentAdmin(admin.ModelAdmin):
+	list_display = ('match', 'participant', 'team')
+	list_filter = ('team',)
+	search_fields = ('match__title', 'participant__player__username')
