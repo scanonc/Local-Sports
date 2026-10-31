@@ -1,6 +1,12 @@
 from django.db import transaction
 
-from .models import Match, MatchTeam, MatchTeamAssignment, ParticipantStatus
+from .models import (
+	Match,
+	MatchStatus,
+	MatchTeam,
+	MatchTeamAssignment,
+	ParticipantStatus,
+)
 
 
 TEAM_PATTERN = (
@@ -56,5 +62,7 @@ def distribute_match_teams(match):
 			for index, participant in enumerate(participants)
 		]
 		MatchTeamAssignment.objects.bulk_create(assignments)
+		match.status = MatchStatus.CLOSED
+		match.save(update_fields=['status', 'updated_at'])
 
 	return assignments

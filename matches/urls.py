@@ -17,6 +17,7 @@ from .views import (
     MatchRequestAcceptView,
     MatchRequestJoinView,
     MatchRequestRejectView,
+    MatchTeamGenerationView,
     MatchUpdateView,
 )
 
@@ -40,4 +41,5 @@ urlpatterns = [
     path('<int:pk>/requests/<int:request_id>/accept/', MatchRequestAcceptView.as_view(), name='match_request_accept'),
     path('<int:pk>/requests/<int:request_id>/reject/', MatchRequestRejectView.as_view(), name='match_request_reject'),
     path('<int:pk>/leave/', MatchLeaveView.as_view(), name='match_leave'),
+    path('<int:pk>/generate-teams/', MatchTeamGenerationView.as_view(), name='match_generate_teams'),
 ]

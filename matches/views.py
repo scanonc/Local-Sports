@@ -34,6 +34,7 @@ from .services import (
     notify_match_update,
     process_link_invitation,
 )
+from .team_services import TeamDistributionError, distribute_match_teams
 
 from users.models import FavoritePlayer
 from users.models import Notification
@@ -215,6 +216,12 @@ class MatchInviteLinkView(LoginRequiredMixin, View):
             messages.error(request, 'This match has been cancelled.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CLOSED:
+            if is_json:
+                return JsonResponse({'error': 'This match is closed.'}, status=400)
+            messages.error(request, 'This match is closed and cannot accept invitations.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.has_started:
             if is_json:
                 return JsonResponse({'error': 'This match has already started or finished.'}, status=400)
@@ -277,6 +284,13 @@ class MatchJoinViaLinkView(LoginRequiredMixin, View):
         if match.status == MatchStatus.CANCELLED:
             return render(request, 'matches/match_invite.html', {
                 'error_message': 'This match has been cancelled by the organizer.',
+                'match': match,
+                'token': token,
+            })
+
+        if match.status == MatchStatus.CLOSED:
+            return render(request, 'matches/match_invite.html', {
+                'error_message': 'This match is closed and cannot accept new participants.',
                 'match': match,
                 'token': token,
             })
@@ -371,6 +385,10 @@ class MatchInvitePlayersView(LoginRequiredMixin, View):
                 messages.error(request, 'This match has been cancelled.')
                 return redirect('matches:match_detail', pk=match.pk)
 
+            if match.status == MatchStatus.CLOSED:
+                messages.error(request, 'This match is closed and cannot accept invitations.')
+                return redirect('matches:match_detail', pk=match.pk)
+
             if match.has_started:
                 messages.error(request, 'This match has already started or finished.')
                 return redirect('matches:match_detail', pk=match.pk)
@@ -444,6 +462,10 @@ class MatchInvitationResponseView(LoginRequiredMixin, View):
 
             if match.status == MatchStatus.CANCELLED:
                 messages.error(request, 'This match has been cancelled.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if match.status == MatchStatus.CLOSED:
+                messages.error(request, 'This match is closed and cannot accept invitations.')
                 return redirect('matches:match_detail', pk=match.pk)
 
             if match.has_started:
@@ -597,6 +619,9 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
         if obj.status == MatchStatus.CANCELLED:
             messages.error(request, 'Cancelled matches cannot be edited.')
             return redirect('matches:match_detail', pk=obj.pk)
+        if obj.status == MatchStatus.CLOSED:
+            messages.error(request, 'Closed matches cannot be edited.')
+            return redirect('matches:match_detail', pk=obj.pk)
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -669,6 +694,10 @@ class MatchJoinView(LoginRequiredMixin, View):
             messages.error(request, 'This match has been cancelled.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CLOSED:
+            messages.error(request, 'This match is closed and cannot accept new participants.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.visibility != MatchVisibility.PUBLIC:
             messages.error(
                 request,
@@ -685,6 +714,10 @@ class MatchJoinView(LoginRequiredMixin, View):
 
             if match.status == MatchStatus.CANCELLED:
                 messages.error(request, 'This match has been cancelled.')
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if match.status == MatchStatus.CLOSED:
+                messages.error(request, 'This match is closed and cannot accept new participants.')
                 return redirect('matches:match_detail', pk=match.pk)
 
             if match.visibility != MatchVisibility.PUBLIC:
@@ -809,6 +842,10 @@ class MatchRequestJoinView(LoginRequiredMixin, View):
             messages.error(request, 'This match has been cancelled.')
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CLOSED:
+            messages.error(request, 'This match is closed and cannot accept join requests.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         if match.visibility != MatchVisibility.APPROVAL_REQUIRED:
             messages.error(
                 request,
@@ -890,6 +927,10 @@ class MatchRequestAcceptView(LoginRequiredMixin, View):
             )
             return redirect('matches:match_detail', pk=match.pk)
 
+        if match.status == MatchStatus.CLOSED:
+            messages.error(request, 'This match is closed and cannot accept join requests.')
+            return redirect('matches:match_detail', pk=match.pk)
+
         with transaction.atomic():
             match = Match.objects.select_for_update().get(pk=pk)
 
@@ -898,6 +939,10 @@ class MatchRequestAcceptView(LoginRequiredMixin, View):
                     request,
                     'Only the organizer can accept join requests.',
                 )
+                return redirect('matches:match_detail', pk=match.pk)
+
+            if match.status == MatchStatus.CLOSED:
+                messages.error(request, 'This match is closed and cannot accept join requests.')
                 return redirect('matches:match_detail', pk=match.pk)
 
             try:
@@ -1021,4 +1066,40 @@ class MatchLeaveView(LoginRequiredMixin, View):
         else:
             messages.success(request, 'You have left the waiting list.')
 
+        return redirect('matches:match_detail', pk=match.pk)
+
+
+class MatchTeamGenerationView(LoginRequiredMixin, View):
+    """FR24 - Generate and persist teams for a match."""
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id != request.user.id:
+            messages.error(request, 'Only the organizer can generate teams.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        if request.POST.get('confirm') != 'yes':
+            messages.error(request, 'Team generation requires confirmation.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        try:
+            with transaction.atomic():
+                match = Match.objects.select_for_update().get(pk=pk)
+
+                if match.status == MatchStatus.CANCELLED:
+                    raise TeamDistributionError('This match has been cancelled.')
+                if match.status == MatchStatus.CLOSED:
+                    raise TeamDistributionError('Teams have already been generated.')
+                if match.has_started:
+                    raise TeamDistributionError(
+                        'Teams can only be generated before the match starts.'
+                    )
+
+                distribute_match_teams(match)
+        except TeamDistributionError as error:
+            messages.error(request, str(error))
+            return redirect('matches:match_detail', pk=match.pk)
+
+        messages.success(request, 'Teams have been generated successfully.')
         return redirect('matches:match_detail', pk=match.pk)
