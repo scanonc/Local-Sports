@@ -98,8 +98,17 @@ class Match(models.Model):
 		):
 			errors['date_time'] = 'Match date and time cannot be in the past.'
 
-		if self.max_players is not None and self.max_players < 2:
-			errors['max_players'] = 'Maximum number of players must be at least 2.'
+		if (
+			self.max_players is not None
+			and (
+				self.max_players < 6
+				or self.max_players > 40
+				or self.max_players % 2 != 0
+			)
+		):
+			errors['max_players'] = (
+				'Maximum number of players must be an even number between 6 and 40.'
+			)
 
 		if self.pk is not None:
 			confirmed_count = self.participants.filter(

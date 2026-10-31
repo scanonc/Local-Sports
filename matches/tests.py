@@ -63,6 +63,24 @@ class MatchModelTests(TestCase):
 
         self.assertEqual(match.organizer, self.user)
 
+    def test_match_rejects_invalid_player_limits(self):
+        invalid_limits = [5, 7, 42, 4, 0, -2]
+
+        for max_players in invalid_limits:
+            with self.subTest(max_players=max_players):
+                match = Match(
+                    organizer=self.user,
+                    title='Sunday Match',
+                    date_time=timezone.now() + timedelta(days=1),
+                    location='Local field',
+                    skill_level='beginner',
+                    max_players=max_players,
+                    visibility='public',
+                )
+
+                with self.assertRaises(ValidationError):
+                    match.full_clean()
+
 
 class MatchFormTests(TestCase):
     def test_valid_form_creates_clean_match_data(self):
@@ -78,6 +96,73 @@ class MatchFormTests(TestCase):
         )
 
         self.assertTrue(form.is_valid())
+
+    def test_form_accepts_even_limits_from_6_to_40(self):
+        for max_players in [6, 8, 40]:
+            with self.subTest(max_players=max_players):
+                form = MatchForm(
+                    data={
+                        'title': 'Friday Match',
+                        'date_time': (
+                            timezone.now() + timedelta(days=2)
+                        ).strftime('%Y-%m-%dT%H:%M'),
+                        'location': 'Central park',
+                        'skill_level': 'intermediate',
+                        'max_players': max_players,
+                        'visibility': 'approval_required',
+                    }
+                )
+
+                self.assertTrue(form.is_valid(), form.errors)
+
+    def test_form_rejects_invalid_player_limits(self):
+        for max_players in [5, 7, 42, 4, 0, -2, 'not-a-number']:
+            with self.subTest(max_players=max_players):
+                form = MatchForm(
+                    data={
+                        'title': 'Friday Match',
+                        'date_time': (
+                            timezone.now() + timedelta(days=2)
+                        ).strftime('%Y-%m-%dT%H:%M'),
+                        'location': 'Central park',
+                        'skill_level': 'intermediate',
+                        'max_players': max_players,
+                        'visibility': 'approval_required',
+                    }
+                )
+
+                self.assertFalse(form.is_valid())
+                self.assertIn('max_players', form.errors)
+
+    def test_edit_form_rejects_invalid_player_limits(self):
+        organizer = User.objects.create_user(
+            username='form_organizer',
+            email='form-organizer@example.com',
+            password='testpass123',
+        )
+        match = Match.objects.create(
+            organizer=organizer,
+            title='Friday Match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Central park',
+            skill_level='intermediate',
+            max_players=6,
+            visibility='approval_required',
+        )
+        form = MatchForm(
+            data={
+                'title': match.title,
+                'date_time': match.date_time.strftime('%Y-%m-%dT%H:%M'),
+                'location': match.location,
+                'skill_level': match.skill_level,
+                'max_players': 7,
+                'visibility': match.visibility,
+            },
+            instance=match,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('max_players', form.errors)
 
 
 class MatchViewTests(TestCase):
@@ -1906,5 +1991,4 @@ class MatchJoinViaLinkParticipationTests(TestCase):
         self.assertFalse(
             Invitation.objects.filter(match=self.public_match, player=self.player).exists()
         )
-
 
