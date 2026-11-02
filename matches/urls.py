@@ -11,6 +11,7 @@ from .views import (
     MatchInvitePlayersView,
     MatchInvitationResponseView,
     MatchHistoryView,
+    MyMatchesView,
     MatchLeaveView,
     MatchListView,
     MatchMessageCreateView,
@@ -25,6 +26,7 @@ app_name = 'matches'
 
 urlpatterns = [
     path('', MatchListView.as_view(), name='match_list'),
+    path('my-matches/', MyMatchesView.as_view(), name='my_matches'),
     path('history/', MatchHistoryView.as_view(), name='match_history'),
     path('create/', MatchCreateView.as_view(), name='match_create'),
     path('invite/<str:token>/', MatchJoinViaLinkView.as_view(), name='match_join_via_link'),

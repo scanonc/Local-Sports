@@ -10,6 +10,7 @@ class MatchForm(forms.ModelForm):
         widget=forms.NumberInput(
             attrs={
                 'class': 'form-control',
+                'placeholder': 'Enter an even number between 6 and 40',
                 'min': 6,
                 'max': 40,
                 'step': 2,

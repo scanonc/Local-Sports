@@ -226,6 +226,30 @@ class MatchHistoryView(LoginRequiredMixin, ListView):
         )
 
 
+class MyMatchesView(LoginRequiredMixin, ListView):
+    model = Match
+    template_name = 'matches/my_matches.html'
+    context_object_name = 'matches'
+
+    def get_queryset(self):
+        now = timezone.now()
+        user = self.request.user
+        return (
+            Match.objects.filter(
+                Q(organizer=user)
+                | Q(
+                    participants__player=user,
+                    participants__status=ParticipantStatus.CONFIRMED,
+                ),
+                status__in=[MatchStatus.ACTIVE, MatchStatus.CLOSED],
+                date_time__gte=now,
+            )
+            .select_related('organizer')
+            .distinct()
+            .order_by('date_time')
+        )
+
+
 class MatchInviteLinkView(LoginRequiredMixin, View):
     """FR16 - Exclusive view for match organizers to generate or retrieve a shareable invitation link."""
 

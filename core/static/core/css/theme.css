@@ -102,6 +102,21 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
   text-decoration: none;
 }
 
+.navbar-avatar-button {
+  border: 0;
+  cursor: pointer;
+}
+
+.navbar-account-menu {
+  min-width: 13rem;
+  border-color: var(--borde);
+  box-shadow: 0 0.5rem 1rem rgba(11, 30, 61, 0.15);
+}
+
+.navbar-account-menu form {
+  margin: 0;
+}
+
 /* --- Skill level badges ---
  * Matches the "Explorar partidos" / "Detalle del partido" mockups:
  * beginner and intermediate both read as green (intermediate a touch
@@ -110,22 +125,21 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
  */
 .skill-badge {
   display: inline-block;
+  font-family: 'Manrope', sans-serif;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   padding: 4px 12px;
   border-radius: 999px;
+  color: var(--blanco);
 }
 .skill-badge-beginner {
-  background: #E7F5EC;
-  color: var(--verde-oscuro);
+  background: var(--verde-oscuro);
 }
 .skill-badge-intermediate {
-  background: #DDF6E4;
-  color: var(--verde-oscuro);
+  background: #287A49;
 }
 .skill-badge-advanced {
-  background: #FDEAEA;
-  color: #8A2E2E;
+  background: #8A2E2E;
 }
 
 /* --- Match chat (FR22) --- */
@@ -156,4 +170,176 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
 .chat-message-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* --- Match detail dashboard --- */
+.match-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.95fr);
+  gap: 1rem;
+}
+
+.match-panel,
+.match-secondary-panel {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.match-panel {
+  min-width: 0;
+}
+
+.match-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--borde);
+}
+
+.match-panel-heading h1,
+.match-panel-heading h2 {
+  color: var(--azul-oscuro);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.match-panel-icon {
+  color: var(--azul-oscuro);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.match-subheading {
+  color: var(--azul-oscuro);
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+.match-player-list .list-group-item {
+  border-color: var(--borde);
+  padding: 0.45rem 0.65rem;
+}
+
+.match-player-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.match-player-actions form {
+  margin: 0;
+}
+
+.match-icon-button {
+  border: 0;
+  background: transparent;
+  color: var(--gris);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.1rem;
+  text-decoration: none;
+}
+
+.match-icon-button i {
+  pointer-events: none;
+}
+
+.match-icon-button:hover,
+.match-icon-button.is-favorite {
+  color: #d29b00;
+}
+
+.match-icon-button.report-icon:hover {
+  color: #b02a37;
+}
+
+.match-info-list {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 1fr) minmax(0, 1.45fr);
+  row-gap: 0.55rem;
+}
+
+.match-info-list dt {
+  color: var(--gris);
+  font-weight: 700;
+}
+
+.match-info-list dd {
+  margin: 0;
+}
+
+.match-action-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.match-invite-details {
+  width: 100%;
+}
+
+.match-invite-details summary {
+  list-style: none;
+  cursor: pointer;
+  text-align: center;
+}
+
+.match-invite-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.match-invite-form {
+  margin-top: 0.7rem;
+  padding: 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: 0.5rem;
+  background: var(--fondo);
+}
+
+.match-invite-form .form-label {
+  color: var(--gris);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.match-panel-chat {
+  min-height: 24rem;
+}
+
+.match-chat-thread {
+  min-height: 15rem;
+  max-height: 18rem;
+}
+
+.match-chat-empty {
+  min-height: 15rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--gris);
+}
+
+.match-chat-empty p {
+  color: var(--azul-oscuro);
+  margin-top: 0.75rem;
+}
+
+.match-chat-empty-icon {
+  color: #aab6c5;
+  font-size: 3.5rem;
+}
+
+.match-secondary-panel {
+  max-width: 50rem;
+}
+
+@media (max-width: 767.98px) {
+  .match-dashboard {
+    grid-template-columns: 1fr;
+  }
 }
