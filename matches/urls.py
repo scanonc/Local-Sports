@@ -11,12 +11,14 @@ from .views import (
     MatchInvitePlayersView,
     MatchInvitationResponseView,
     MatchHistoryView,
+    MyMatchesView,
     MatchLeaveView,
     MatchListView,
     MatchMessageCreateView,
     MatchRequestAcceptView,
     MatchRequestJoinView,
     MatchRequestRejectView,
+    MatchTeamGenerationView,
     MatchUpdateView,
 )
 
@@ -24,6 +26,7 @@ app_name = 'matches'
 
 urlpatterns = [
     path('', MatchListView.as_view(), name='match_list'),
+    path('my-matches/', MyMatchesView.as_view(), name='my_matches'),
     path('history/', MatchHistoryView.as_view(), name='match_history'),
     path('create/', MatchCreateView.as_view(), name='match_create'),
     path('invite/<str:token>/', MatchJoinViaLinkView.as_view(), name='match_join_via_link'),
@@ -40,4 +43,5 @@ urlpatterns = [
     path('<int:pk>/requests/<int:request_id>/accept/', MatchRequestAcceptView.as_view(), name='match_request_accept'),
     path('<int:pk>/requests/<int:request_id>/reject/', MatchRequestRejectView.as_view(), name='match_request_reject'),
     path('<int:pk>/leave/', MatchLeaveView.as_view(), name='match_leave'),
+    path('<int:pk>/generate-teams/', MatchTeamGenerationView.as_view(), name='match_generate_teams'),
 ]

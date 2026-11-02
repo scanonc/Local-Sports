@@ -18,6 +18,7 @@ class MatchVisibility(models.TextChoices):
 
 class MatchStatus(models.TextChoices):
 	ACTIVE = 'active', 'Active'
+	CLOSED = 'closed', 'Closed'
 	CANCELLED = 'cancelled', 'Cancelled'
 
 
@@ -98,8 +99,17 @@ class Match(models.Model):
 		):
 			errors['date_time'] = 'Match date and time cannot be in the past.'
 
-		if self.max_players is not None and self.max_players < 2:
-			errors['max_players'] = 'Maximum number of players must be at least 2.'
+		if (
+			self.max_players is not None
+			and (
+				self.max_players < 6
+				or self.max_players > 40
+				or self.max_players % 2 != 0
+			)
+		):
+			errors['max_players'] = (
+				'Maximum number of players must be an even number between 6 and 40.'
+			)
 
 		if self.pk is not None:
 			confirmed_count = self.participants.filter(
@@ -132,6 +142,14 @@ class Match(models.Model):
 	@property
 	def is_cancelled(self):
 		return self.status == MatchStatus.CANCELLED
+
+	@property
+	def is_closed(self):
+		return self.status == MatchStatus.CLOSED
+
+	@property
+	def has_generated_teams(self):
+		return self.team_assignments.exists()
 
 	@property
 	def waiting_participants(self):
@@ -198,6 +216,41 @@ class MatchParticipant(models.Model):
 
 	def __str__(self):
 		return f'{self.player} - {self.match} ({self.status})'
+
+
+class MatchTeam(models.TextChoices):
+	A = 'A', 'A'
+	B = 'B', 'B'
+
+
+class MatchTeamAssignment(models.Model):
+	match = models.ForeignKey(
+		Match,
+		on_delete=models.CASCADE,
+		related_name='team_assignments',
+	)
+	participant = models.OneToOneField(
+		MatchParticipant,
+		on_delete=models.CASCADE,
+		related_name='team_assignment',
+	)
+	team = models.CharField(max_length=1, choices=MatchTeam.choices)
+
+	class Meta:
+		ordering = ['team', 'participant__joined_at']
+
+	def clean(self):
+		if (
+			self.match_id
+			and self.participant_id
+			and self.participant.match_id != self.match_id
+		):
+			raise ValidationError(
+				'The participant must belong to the assigned match.'
+			)
+
+	def __str__(self):
+		return f'{self.participant.player} - Team {self.team} ({self.match})'
 
 
 class MatchMessage(models.Model):

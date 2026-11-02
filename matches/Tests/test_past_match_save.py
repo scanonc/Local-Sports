@@ -6,9 +6,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .forms import MatchForm
-from .models import Match, MatchStatus
-from .services import generate_match_invite_token
+from ..forms import MatchForm
+from ..models import Match, MatchStatus
+from ..services import generate_match_invite_token
 
 
 User = get_user_model()
@@ -77,7 +77,7 @@ class PastMatchSaveTests(TestCase):
 				date_time=timezone.now() - timedelta(hours=1),
 				location='Nowhere',
 				skill_level='beginner',
-				max_players=4,
+				max_players=6,
 			)
 		self.assertIn('date_time', ctx.exception.message_dict)
 
@@ -88,7 +88,7 @@ class PastMatchSaveTests(TestCase):
 			date_time=timezone.now() + timedelta(days=1),
 			location='Central Stadium',
 			skill_level='beginner',
-			max_players=4,
+			max_players=6,
 		)
 		future.date_time = timezone.now() - timedelta(hours=2)
 
