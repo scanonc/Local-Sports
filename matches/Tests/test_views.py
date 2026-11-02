@@ -11,8 +11,8 @@ from django.utils import timezone
 
 from users.models import Notification
 
-from .forms import MatchForm
-from .models import (
+from ..forms import MatchForm
+from ..models import (
     Invitation,
     InvitationStatus,
     JoinRequest,
@@ -28,173 +28,6 @@ from .models import (
 
 
 User = get_user_model()
-
-
-class MatchModelTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username='organizer',
-            email='organizer@example.com',
-            password='testpass123',
-        )
-
-    def test_match_requires_future_date_and_valid_capacity(self):
-        match = Match(
-            organizer=self.user,
-            title='Sunday Match',
-            date_time=timezone.now() - timedelta(days=1),
-            location='Local field',
-            skill_level='beginner',
-            max_players=1,
-            visibility='public',
-        )
-
-        with self.assertRaises(ValidationError):
-            match.full_clean()
-
-    def test_match_can_be_created_with_valid_data(self):
-        match = Match.objects.create(
-            organizer=self.user,
-            title='Sunday Match',
-            date_time=timezone.now() + timedelta(days=1),
-            location='Local field',
-            skill_level='beginner',
-            max_players=10,
-            visibility='public',
-        )
-
-        self.assertEqual(match.organizer, self.user)
-
-    def test_closed_match_status_and_team_assignment_are_persisted(self):
-        match = Match.objects.create(
-            organizer=self.user,
-            title='Sunday Match',
-            date_time=timezone.now() + timedelta(days=1),
-            location='Local field',
-            skill_level='beginner',
-            max_players=6,
-            visibility='public',
-            status=MatchStatus.CLOSED,
-        )
-        participant = MatchParticipant.objects.create(
-            match=match,
-            player=User.objects.create_user(
-                username='player',
-                email='player@example.com',
-                password='testpass123',
-            ),
-        )
-        assignment = MatchTeamAssignment.objects.create(
-            match=match,
-            participant=participant,
-            team=MatchTeam.A,
-        )
-
-        match.refresh_from_db()
-        self.assertTrue(match.is_closed)
-        self.assertTrue(match.has_generated_teams)
-        self.assertEqual(match.team_assignments.get(), assignment)
-
-    def test_match_rejects_invalid_player_limits(self):
-        invalid_limits = [5, 7, 42, 4, 0, -2]
-
-        for max_players in invalid_limits:
-            with self.subTest(max_players=max_players):
-                match = Match(
-                    organizer=self.user,
-                    title='Sunday Match',
-                    date_time=timezone.now() + timedelta(days=1),
-                    location='Local field',
-                    skill_level='beginner',
-                    max_players=max_players,
-                    visibility='public',
-                )
-
-                with self.assertRaises(ValidationError):
-                    match.full_clean()
-
-
-class MatchFormTests(TestCase):
-    def test_valid_form_creates_clean_match_data(self):
-        form = MatchForm(
-            data={
-                'title': 'Friday Match',
-                'date_time': (timezone.now() + timedelta(days=2)).strftime('%Y-%m-%dT%H:%M'),
-                'location': 'Central park',
-                'skill_level': 'intermediate',
-                'max_players': 12,
-                'visibility': 'approval_required',
-            }
-        )
-
-        self.assertTrue(form.is_valid())
-
-    def test_form_accepts_even_limits_from_6_to_40(self):
-        for max_players in [6, 8, 40]:
-            with self.subTest(max_players=max_players):
-                form = MatchForm(
-                    data={
-                        'title': 'Friday Match',
-                        'date_time': (
-                            timezone.now() + timedelta(days=2)
-                        ).strftime('%Y-%m-%dT%H:%M'),
-                        'location': 'Central park',
-                        'skill_level': 'intermediate',
-                        'max_players': max_players,
-                        'visibility': 'approval_required',
-                    }
-                )
-
-                self.assertTrue(form.is_valid(), form.errors)
-
-    def test_form_rejects_invalid_player_limits(self):
-        for max_players in [5, 7, 42, 4, 0, -2, 'not-a-number']:
-            with self.subTest(max_players=max_players):
-                form = MatchForm(
-                    data={
-                        'title': 'Friday Match',
-                        'date_time': (
-                            timezone.now() + timedelta(days=2)
-                        ).strftime('%Y-%m-%dT%H:%M'),
-                        'location': 'Central park',
-                        'skill_level': 'intermediate',
-                        'max_players': max_players,
-                        'visibility': 'approval_required',
-                    }
-                )
-
-                self.assertFalse(form.is_valid())
-                self.assertIn('max_players', form.errors)
-
-    def test_edit_form_rejects_invalid_player_limits(self):
-        organizer = User.objects.create_user(
-            username='form_organizer',
-            email='form-organizer@example.com',
-            password='testpass123',
-        )
-        match = Match.objects.create(
-            organizer=organizer,
-            title='Friday Match',
-            date_time=timezone.now() + timedelta(days=2),
-            location='Central park',
-            skill_level='intermediate',
-            max_players=6,
-            visibility='approval_required',
-        )
-        form = MatchForm(
-            data={
-                'title': match.title,
-                'date_time': match.date_time.strftime('%Y-%m-%dT%H:%M'),
-                'location': match.location,
-                'skill_level': match.skill_level,
-                'max_players': 7,
-                'visibility': match.visibility,
-            },
-            instance=match,
-        )
-
-        self.assertFalse(form.is_valid())
-        self.assertIn('max_players', form.errors)
 
 
 class MatchViewTests(TestCase):
@@ -1652,7 +1485,7 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
     @patch('resend.Emails.send')
     def test_participant_with_status_left_receives_no_notification_or_email(self, mock_send):
         """Participants who left the match must not be notified on update or cancellation."""
-        from .services import notify_match_cancellation, notify_match_update
+        from ..services import notify_match_cancellation, notify_match_update
 
         # Call notify_match_update directly
         notify_match_update(self.match)

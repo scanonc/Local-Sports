@@ -5,8 +5,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Match, MatchTeam, MatchTeamAssignment, ParticipantStatus
-from .team_services import (
+from ..models import Match, MatchTeam, MatchTeamAssignment, ParticipantStatus
+from ..team_services import (
 	TEAM_PATTERN,
 	TeamDistributionError,
 	distribute_match_teams,
