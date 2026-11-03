@@ -22,6 +22,12 @@ class MatchStatus(models.TextChoices):
 	CANCELLED = 'cancelled', 'Cancelled'
 
 
+class MatchResult(models.TextChoices):
+	TEAM_A = 'team_a', 'Team A won'
+	TEAM_B = 'team_b', 'Team B won'
+	DRAW = 'draw', 'Draw'
+
+
 class Match(models.Model):
 	organizer = models.ForeignKey(
 		settings.AUTH_USER_MODEL,
@@ -51,6 +57,13 @@ class Match(models.Model):
 	invite_active = models.BooleanField(
 		default=True,
 	)
+	result = models.CharField(
+		max_length=10,
+		choices=MatchResult.choices,
+		blank=True,
+		default='',
+	)
+	result_registered_at = models.DateTimeField(null=True, blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
@@ -150,6 +163,19 @@ class Match(models.Model):
 	@property
 	def has_generated_teams(self):
 		return self.team_assignments.exists()
+
+	@property
+	def has_result(self):
+		return bool(self.result)
+
+	@property
+	def awaiting_result(self):
+		"""FR20 - Completed (start time passed) with teams, but no result yet."""
+		return (
+			self.status == MatchStatus.CLOSED
+			and self.has_started
+			and not self.has_result
+		)
 
 	@property
 	def waiting_participants(self):

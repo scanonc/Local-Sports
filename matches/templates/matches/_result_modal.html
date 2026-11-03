@@ -1,0 +1,45 @@
+{% comment %}
+FR20 - Pop-up for the organizer of a completed match without a result.
+It has no close button on purpose: the organizer must answer to keep browsing.
+Plain Bootstrap markup (shown by default), so it does not depend on JavaScript.
+{% endcomment %}
+{% if pending_result_match %}
+<div class="modal-backdrop fade show" style="z-index: 1090;"></div>
+<div class="modal d-block" style="z-index: 1100; overflow-y: auto;" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="match-result-title" id="match-result-modal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'matches:match_result' pending_result_match.pk %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="match-result-title">Register the match result</h2>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1"><strong>{{ pending_result_match.title }}</strong></p>
+                    <p class="text-muted small">
+                        {{ pending_result_match.date_time }} &middot; {{ pending_result_match.location }}
+                    </p>
+                    <p>This match has finished. Who won?</p>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="result" id="result-team-a" value="team_a" required>
+                        <label class="form-check-label" for="result-team-a">Team A won</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="result" id="result-team-b" value="team_b" required>
+                        <label class="form-check-label" for="result-team-b">Team B won</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="result" id="result-draw" value="draw" required>
+                        <label class="form-check-label" for="result-draw">Draw</label>
+                    </div>
+
+                    <p class="text-muted small mt-3 mb-0">The result cannot be changed once registered.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Register result</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
