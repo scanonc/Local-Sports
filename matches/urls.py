@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    MatchPlayerRatingView,
     MatchCancelView,
     MatchCreateView,
     MatchDetailView,
@@ -26,6 +27,7 @@ from .views import (
 app_name = 'matches'
 
 urlpatterns = [
+    path('<int:pk>/ratings/<int:player_id>/', MatchPlayerRatingView.as_view(), name='match_player_rating'),
     path('', MatchListView.as_view(), name='match_list'),
     path('my-matches/', MyMatchesView.as_view(), name='my_matches'),
     path('history/', MatchHistoryView.as_view(), name='match_history'),

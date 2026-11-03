@@ -1,6 +1,33 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
+{% if google_calendar_url %}
+<div class="mb-4">
+    <a class="btn btn-outline-primary" href="{{ google_calendar_url }}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
+    <small class="text-muted">Suggested duration: 1 hour. You can edit it in Google Calendar.</small>
+</div>
+{% endif %}
+{% if rating_players %}
+<section class="card card-body mb-4" aria-labelledby="player-ratings-heading">
+    <h2 id="player-ratings-heading" class="h4">Rate players</h2>
+    <p>Rate the other participants from 1 to 5 stars. Saving again updates your rating.</p>
+    {% for entry in rating_players %}
+    <form method="post" action="{% url 'matches:match_player_rating' match.pk entry.player.pk %}" class="d-flex align-items-center gap-3 mb-2">
+        {% csrf_token %}
+        <label for="rating-{{ entry.player.pk }}">{{ entry.player }}</label>
+        <select id="rating-{{ entry.player.pk }}" name="stars" class="form-select w-auto" required>
+            <option value="">Select stars</option>
+            <option value="1" {% if entry.stars == 1 %}selected{% endif %}>1 ★</option>
+            <option value="2" {% if entry.stars == 2 %}selected{% endif %}>2 ★</option>
+            <option value="3" {% if entry.stars == 3 %}selected{% endif %}>3 ★</option>
+            <option value="4" {% if entry.stars == 4 %}selected{% endif %}>4 ★</option>
+            <option value="5" {% if entry.stars == 5 %}selected{% endif %}>5 ★</option>
+        </select>
+        <button class="btn btn-primary" type="submit">Save rating</button>
+    </form>
+    {% endfor %}
+</section>
+{% endif %}
 {% if match.status == 'cancelled' %}
 <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
     <strong>Notice:</strong>&nbsp; This match has been cancelled by the organizer. No further actions can be taken.

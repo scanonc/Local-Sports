@@ -981,7 +981,7 @@ class AutomaticReplacementTests(TestCase):
             reverse('matches:match_update', kwargs={'pk': self.match.pk}),
             data={
                 'title': self.match.title,
-                'date_time': self.match.date_time.strftime('%Y-%m-%dT%H:%M'),
+                'date_time': timezone.localtime(self.match.date_time).strftime('%Y-%m-%dT%H:%M'),
                 'location': self.match.location,
                 'skill_level': self.match.skill_level,
                 'max_players': 8,
@@ -1426,7 +1426,7 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
             reverse('matches:match_update', kwargs={'pk': self.match.pk}),
             data={
                 'title': self.match.title,
-                'date_time': self.match.date_time.strftime('%Y-%m-%dT%H:%M'),
+                'date_time': timezone.localtime(self.match.date_time).strftime('%Y-%m-%dT%H:%M'),
                 'location': self.match.location,
                 'skill_level': self.match.skill_level,
                 'max_players': self.match.max_players,

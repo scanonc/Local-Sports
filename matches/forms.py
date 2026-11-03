@@ -19,6 +19,7 @@ class MatchForm(forms.ModelForm):
     )
 
     date_time = forms.DateTimeField(
+        help_text='Colombia time (America/Bogota).',
         widget=forms.DateTimeInput(
             attrs={'type': 'datetime-local', 'class': 'form-control'},
             format='%Y-%m-%dT%H:%M',
