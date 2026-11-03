@@ -35,6 +35,7 @@ from .services import (
     notify_match_update,
     process_link_invitation,
 )
+from .result_services import MatchResultError, register_match_result
 from .team_services import TeamDistributionError, distribute_match_teams
 
 from users.models import FavoritePlayer
@@ -1114,6 +1115,15 @@ class MatchLeaveView(LoginRequiredMixin, View):
                 messages.error(request, 'You are not currently part of this match.')
                 return redirect('matches:match_detail', pk=match.pk)
 
+            if match.has_started:
+                # Leaving would delete the generated teams (FR24) and reopen
+                # the match, which would break the result (FR20) of a finished match.
+                messages.error(
+                    request,
+                    'You cannot leave a match that has already started or finished.',
+                )
+                return redirect('matches:match_detail', pk=match.pk)
+
             was_confirmed = participant.status == ParticipantStatus.CONFIRMED
 
             if was_confirmed and match.has_generated_teams:
@@ -1170,4 +1180,26 @@ class MatchTeamGenerationView(LoginRequiredMixin, View):
             return redirect('matches:match_detail', pk=match.pk)
 
         messages.success(request, 'Teams have been generated successfully.')
+        return redirect('matches:match_detail', pk=match.pk)
+
+
+class MatchResultView(LoginRequiredMixin, View):
+    """FR20 - Register the result of a completed match (organizer only)."""
+
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+
+        if match.organizer_id != request.user.id:
+            messages.error(request, 'Only the organizer can register the match result.')
+            return redirect('matches:match_detail', pk=match.pk)
+
+        try:
+            register_match_result(match, request.POST.get('result'))
+        except MatchResultError as error:
+            messages.error(request, str(error))
+        else:
+            messages.success(request, 'Match result registered.')
+
         return redirect('matches:match_detail', pk=match.pk)
