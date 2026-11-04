@@ -27,6 +27,8 @@ from .views import (
 app_name = 'matches'
 
 urlpatterns = [
+    path('<int:pk>/ratings/', MatchPlayerRatingView.as_view(), name='match_player_ratings'),
+    path('<int:pk>/ratings/', MatchPlayerRatingView.as_view(), name='match_player_rating'),
     path('<int:pk>/ratings/<int:player_id>/', MatchPlayerRatingView.as_view(), name='match_player_rating'),
     path('', MatchListView.as_view(), name='match_list'),
     path('my-matches/', MyMatchesView.as_view(), name='my_matches'),

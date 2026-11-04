@@ -104,3 +104,16 @@ class Sprint4YohnTests(TestCase):
                 PlayerRating.objects.bulk_create([PlayerRating(
                     match=self.match, rater=self.users[0], player=player, stars=stars,
                 )])
+
+    def test_bulk_rating_submission(self):
+        self.finish()
+        self.client.force_login(self.users[0])
+        bulk_url = reverse('matches:match_player_rating', args=[self.match.pk])
+        resp = self.client.post(bulk_url, {f'stars_{self.users[1].pk}': 4})
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(get_player_average_rating(self.users[1]), 4)
+
+        # Update rating
+        self.client.post(bulk_url, {f'stars_{self.users[1].pk}': 2})
+        self.assertEqual(PlayerRating.objects.count(), 1)
+        self.assertEqual(get_player_average_rating(self.users[1]), 2)

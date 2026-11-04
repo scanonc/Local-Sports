@@ -1224,29 +1224,73 @@ class MatchResultView(LoginRequiredMixin, View):
 
 
 class MatchPlayerRatingView(LoginRequiredMixin, View):
-    def post(self, request, pk, player_id):
+    def post(self, request, pk, player_id=None):
         with transaction.atomic():
             match = get_object_or_404(Match.objects.select_for_update(), pk=pk)
             if not can_rate_match(match, request.user):
                 return HttpResponseForbidden('Only participants of a completed match can rate players.')
-            if player_id == request.user.pk:
-                return HttpResponseForbidden('You cannot rate yourself.')
-            get_object_or_404(MatchParticipant, match=match, player_id=player_id,
-                             status=ParticipantStatus.CONFIRMED)
-            try:
-                stars = int(request.POST.get('stars', ''))
-                if stars not in range(1, 6):
-                    raise ValueError
-            except (ValueError, TypeError):
+
+            if player_id is not None:
+                if player_id == request.user.pk:
+                    return HttpResponseForbidden('You cannot rate yourself.')
+                get_object_or_404(MatchParticipant, match=match, player_id=player_id,
+                                 status=ParticipantStatus.CONFIRMED)
+                raw_stars = request.POST.get(f'stars_{player_id}', request.POST.get('stars', ''))
+                try:
+                    stars = int(raw_stars)
+                    if stars not in range(1, 6):
+                        raise ValueError
+                except (ValueError, TypeError):
+                    messages.error(request, 'Select a rating from 1 to 5 stars.')
+                    return redirect(match)
+                try:
+                    PlayerRating.objects.update_or_create(
+                        match=match, rater=request.user, player_id=player_id,
+                        defaults={'stars': stars},
+                    )
+                except ValidationError:
+                    messages.error(request, 'The rating could not be saved.')
+                    return redirect(match)
+                messages.success(request, 'Player rating saved.')
+                return redirect(match)
+
+            ratings_to_save = {}
+            for key, value in request.POST.items():
+                if key.startswith('stars_'):
+                    pid_str = key[len('stars_'):]
+                    if pid_str.isdigit():
+                        try:
+                            val = int(value)
+                            if val in range(1, 6):
+                                ratings_to_save[int(pid_str)] = val
+                        except (ValueError, TypeError):
+                            pass
+
+            if not ratings_to_save:
                 messages.error(request, 'Select a rating from 1 to 5 stars.')
                 return redirect(match)
-            try:
-                PlayerRating.objects.update_or_create(
-                    match=match, rater=request.user, player_id=player_id,
-                    defaults={'stars': stars},
-                )
-            except ValidationError:
-                messages.error(request, 'The rating could not be saved.')
-                return redirect(match)
-        messages.success(request, 'Player rating saved.')
+
+            confirmed_player_ids = set(
+                match.participants.filter(status=ParticipantStatus.CONFIRMED)
+                .exclude(player=request.user)
+                .values_list('player_id', flat=True)
+            )
+
+            saved_any = False
+            for target_id, stars in ratings_to_save.items():
+                if target_id not in confirmed_player_ids:
+                    continue
+                try:
+                    PlayerRating.objects.update_or_create(
+                        match=match, rater=request.user, player_id=target_id,
+                        defaults={'stars': stars},
+                    )
+                    saved_any = True
+                except ValidationError:
+                    pass
+
+            if saved_any:
+                messages.success(request, 'Player ratings saved.')
+            else:
+                messages.error(request, 'Select a rating from 1 to 5 stars.')
         return redirect(match)
