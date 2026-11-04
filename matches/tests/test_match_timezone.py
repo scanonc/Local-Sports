@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from ..forms import MatchForm
-from ..sprint4_services import google_calendar_url
+from ..services.calendar_services import google_calendar_url
 
 
 class MatchLocalTimeTests(TestCase):

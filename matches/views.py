@@ -15,7 +15,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from .forms import MatchForm, MatchMessageForm
 from .models import PlayerRating
-from .sprint4_services import can_rate_match, google_calendar_url
+from .services.calendar_services import can_rate_match, google_calendar_url
 from django.core.exceptions import ValidationError
 from .models import (
     JoinRequest,
@@ -30,13 +30,15 @@ from .models import (
     MatchVisibility,
     ParticipantStatus,
 )
-from .services import (
+from .services.invitation_services import (
     build_match_invite_url,
     generate_match_invite_token,
+    process_link_invitation,
+)
+from .services.notification_services import (
     notify_attendance_confirmation,
     notify_match_cancellation,
     notify_match_update,
-    process_link_invitation,
 )
 from .result_services import MatchResultError, register_match_result
 from .team_services import TeamDistributionError, distribute_match_teams

@@ -1,11 +1,11 @@
 from datetime import timedelta, timezone as datetime_timezone
 from urllib.parse import urlencode
 
-from .models import MatchStatus, ParticipantStatus
+from ..models import MatchStatus, ParticipantStatus
 
 
 def can_rate_match(match, user):
-    # Match completion follows FR20: its scheduled start time has passed.
+    """Return whether a user can rate a completed match."""
     return (
         user.is_authenticated
         and match.has_started
@@ -17,8 +17,8 @@ def can_rate_match(match, user):
 
 
 def google_calendar_url(match):
+    """Build a one-hour Google Calendar event URL for a match."""
     start = match.date_time.astimezone(datetime_timezone.utc)
-    # Matches have no duration field; propose a one-hour event, editable in Google.
     end = start + timedelta(hours=1)
     return 'https://calendar.google.com/calendar/render?' + urlencode({
         'action': 'TEMPLATE',

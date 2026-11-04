@@ -405,7 +405,7 @@ class PlayerRating(models.Model):
         ]
 
     def clean(self):
-        from .sprint4_services import can_rate_match
+        from .services.calendar_services import can_rate_match
         if self.match_id and self.rater_id and not can_rate_match(self.match, self.rater):
             raise ValidationError('Only participants of a completed match can rate players.')
         if self.match_id and self.player_id and not self.match.participants.filter(

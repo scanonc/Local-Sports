@@ -1261,7 +1261,9 @@ class MatchFilterListViewTests(TestCase):
         self.assertEqual(matches, [self.match_2])
 
     def test_filter_by_date_from_gte(self):
-        filter_date = (self.base_time + timedelta(days=4)).strftime('%Y-%m-%d')
+        filter_date = timezone.localtime(
+            self.base_time + timedelta(days=4),
+        ).strftime('%Y-%m-%d')
         response = self.client.get(reverse('matches:match_list'), {'date': filter_date})
         self.assertEqual(response.status_code, 200)
         matches = list(response.context['matches'])
@@ -1270,7 +1272,9 @@ class MatchFilterListViewTests(TestCase):
         self.assertIn(self.match_3, matches)
 
     def test_combined_filters(self):
-        filter_date = (self.base_time + timedelta(days=3)).strftime('%Y-%m-%d')
+        filter_date = timezone.localtime(
+            self.base_time + timedelta(days=3),
+        ).strftime('%Y-%m-%d')
         response = self.client.get(
             reverse('matches:match_list'),
             {
@@ -1284,7 +1288,9 @@ class MatchFilterListViewTests(TestCase):
         self.assertEqual(matches, [self.match_2])
 
     def test_context_preserves_filter_parameters(self):
-        filter_date = (self.base_time + timedelta(days=2)).strftime('%Y-%m-%d')
+        filter_date = timezone.localtime(
+            self.base_time + timedelta(days=2),
+        ).strftime('%Y-%m-%d')
         response = self.client.get(
             reverse('matches:match_list'),
             {
@@ -1485,7 +1491,7 @@ class MatchUpdateAndCancellationNotificationTests(TestCase):
     @patch('resend.Emails.send')
     def test_participant_with_status_left_receives_no_notification_or_email(self, mock_send):
         """Participants who left the match must not be notified on update or cancellation."""
-        from ..services import notify_match_cancellation, notify_match_update
+        from ..services.services import notify_match_cancellation, notify_match_update
 
         # Call notify_match_update directly
         notify_match_update(self.match)
