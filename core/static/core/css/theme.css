@@ -399,6 +399,7 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
   align-items: center;
   gap: 0.35rem;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 /* Visually hide native radio buttons */
@@ -444,7 +445,7 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
 /* Micro-interaction: scale star slightly on hover */
 .star-rating label:hover .star-icon,
 .star-rating .star-label:hover .star-icon {
-  transform: scale(1.18);
+  transform: none;
 }
 
 /* Accessibility focus indicator */

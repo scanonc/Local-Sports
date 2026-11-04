@@ -88,7 +88,11 @@ class MatchDetailView(DetailView):
             ).exists()
         )
 
-        if context['user_is_participant'] and not self.object.is_cancelled:
+        if (
+            context['user_is_participant']
+            and not self.object.is_cancelled
+            and not self.object.has_started
+        ):
             context['google_calendar_url'] = google_calendar_url(self.object)
         if can_rate_match(self.object, user):
             previous = dict(PlayerRating.objects.filter(
