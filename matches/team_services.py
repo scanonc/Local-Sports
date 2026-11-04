@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Avg
 
 from .models import (
 	Match,
@@ -22,8 +23,9 @@ class TeamDistributionError(ValueError):
 
 
 def get_player_average_rating(player):
-	"""Return the player's average rating until FR21 provides real ratings."""
-	return 3.0
+	"""Use FR21 ratings, with a neutral value for unrated players."""
+	average = player.ratings_received.aggregate(value=Avg('stars'))['value']
+	return average if average is not None else 3.0
 
 
 def distribute_match_teams(match):

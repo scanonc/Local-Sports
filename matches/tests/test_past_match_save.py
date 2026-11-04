@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from ..forms import MatchForm
 from ..models import Match, MatchStatus
-from ..services import generate_match_invite_token
+from ..services.services import generate_match_invite_token
 
 
 User = get_user_model()

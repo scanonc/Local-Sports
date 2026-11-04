@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -14,6 +14,9 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from .forms import MatchForm, MatchMessageForm
+from .models import PlayerRating
+from .services.calendar_services import can_rate_match, google_calendar_url
+from django.core.exceptions import ValidationError
 from .models import (
     JoinRequest,
     JoinRequestStatus,
@@ -27,13 +30,15 @@ from .models import (
     MatchVisibility,
     ParticipantStatus,
 )
-from .services import (
+from .services.invitation_services import (
     build_match_invite_url,
     generate_match_invite_token,
+    process_link_invitation,
+)
+from .services.notification_services import (
     notify_attendance_confirmation,
     notify_match_cancellation,
     notify_match_update,
-    process_link_invitation,
 )
 from .result_services import MatchResultError, register_match_result
 from .team_services import TeamDistributionError, distribute_match_teams
@@ -82,6 +87,23 @@ class MatchDetailView(DetailView):
                 status=ParticipantStatus.CONFIRMED,
             ).exists()
         )
+
+        if (
+            context['user_is_participant']
+            and not self.object.is_cancelled
+            and not self.object.has_started
+        ):
+            context['google_calendar_url'] = google_calendar_url(self.object)
+        if can_rate_match(self.object, user):
+            previous = dict(PlayerRating.objects.filter(
+                match=self.object, rater=user,
+            ).values_list('player_id', 'stars'))
+            context['rating_players'] = [
+                {'player': participant.player, 'stars': previous.get(participant.player_id)}
+                for participant in self.object.participants.filter(
+                    status=ParticipantStatus.CONFIRMED,
+                ).exclude(player=user).select_related('player')
+            ]
 
         context['user_has_pending_request'] = (
             user.is_authenticated
@@ -1203,3 +1225,76 @@ class MatchResultView(LoginRequiredMixin, View):
             messages.success(request, 'Match result registered.')
 
         return redirect('matches:match_detail', pk=match.pk)
+
+
+class MatchPlayerRatingView(LoginRequiredMixin, View):
+    def post(self, request, pk, player_id=None):
+        with transaction.atomic():
+            match = get_object_or_404(Match.objects.select_for_update(), pk=pk)
+            if not can_rate_match(match, request.user):
+                return HttpResponseForbidden('Only participants of a completed match can rate players.')
+
+            if player_id is not None:
+                if player_id == request.user.pk:
+                    return HttpResponseForbidden('You cannot rate yourself.')
+                get_object_or_404(MatchParticipant, match=match, player_id=player_id,
+                                 status=ParticipantStatus.CONFIRMED)
+                raw_stars = request.POST.get(f'stars_{player_id}', request.POST.get('stars', ''))
+                try:
+                    stars = int(raw_stars)
+                    if stars not in range(1, 6):
+                        raise ValueError
+                except (ValueError, TypeError):
+                    messages.error(request, 'Select a rating from 1 to 5 stars.')
+                    return redirect(match)
+                try:
+                    PlayerRating.objects.update_or_create(
+                        match=match, rater=request.user, player_id=player_id,
+                        defaults={'stars': stars},
+                    )
+                except ValidationError:
+                    messages.error(request, 'The rating could not be saved.')
+                    return redirect(match)
+                messages.success(request, 'Player rating saved.')
+                return redirect(match)
+
+            ratings_to_save = {}
+            for key, value in request.POST.items():
+                if key.startswith('stars_'):
+                    pid_str = key[len('stars_'):]
+                    if pid_str.isdigit():
+                        try:
+                            val = int(value)
+                            if val in range(1, 6):
+                                ratings_to_save[int(pid_str)] = val
+                        except (ValueError, TypeError):
+                            pass
+
+            if not ratings_to_save:
+                messages.error(request, 'Select a rating from 1 to 5 stars.')
+                return redirect(match)
+
+            confirmed_player_ids = set(
+                match.participants.filter(status=ParticipantStatus.CONFIRMED)
+                .exclude(player=request.user)
+                .values_list('player_id', flat=True)
+            )
+
+            saved_any = False
+            for target_id, stars in ratings_to_save.items():
+                if target_id not in confirmed_player_ids:
+                    continue
+                try:
+                    PlayerRating.objects.update_or_create(
+                        match=match, rater=request.user, player_id=target_id,
+                        defaults={'stars': stars},
+                    )
+                    saved_any = True
+                except ValidationError:
+                    pass
+
+            if saved_any:
+                messages.success(request, 'Player ratings saved.')
+            else:
+                messages.error(request, 'Select a rating from 1 to 5 stars.')
+        return redirect(match)

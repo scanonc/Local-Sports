@@ -387,3 +387,32 @@ class Invitation(models.Model):
 
 	def __str__(self):
 		return f'{self.organizer} invited {self.player} to {self.match} ({self.status})'
+
+class PlayerRating(models.Model):
+    """One rating per author, recipient and completed match (FR21)."""
+
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name='player_ratings')
+    rater = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ratings_given')
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ratings_received')
+    stars = models.PositiveSmallIntegerField(choices=[(n, str(n)) for n in range(1, 6)])
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['match', 'rater', 'player'], name='unique_match_player_rating'),
+            models.CheckConstraint(condition=~models.Q(rater=models.F('player')), name='rating_not_self'),
+            models.CheckConstraint(condition=models.Q(stars__gte=1, stars__lte=5), name='rating_stars_1_to_5'),
+        ]
+
+    def clean(self):
+        from .services.calendar_services import can_rate_match
+        if self.match_id and self.rater_id and not can_rate_match(self.match, self.rater):
+            raise ValidationError('Only participants of a completed match can rate players.')
+        if self.match_id and self.player_id and not self.match.participants.filter(
+            player_id=self.player_id, status=ParticipantStatus.CONFIRMED,
+        ).exists():
+            raise ValidationError('The rated player must be a confirmed participant.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)

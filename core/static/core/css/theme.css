@@ -343,3 +343,198 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* --- Rate players component --- */
+.rating-panel {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 0.75rem;
+}
+
+.rating-heading {
+  color: var(--azul-oscuro);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.rating-subheading {
+  color: var(--gris);
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+}
+
+.rating-player-list {
+  border-top: 1px solid var(--borde);
+  border-bottom: 1px solid var(--borde);
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 0.5rem;
+  border-bottom: 1px solid var(--borde);
+  gap: 1rem;
+}
+
+.rating-row:last-child {
+  border-bottom: none;
+}
+
+.rating-player-name {
+  color: var(--azul-oscuro);
+  font-weight: 600;
+  font-size: 1rem;
+  word-break: break-word;
+}
+
+/* Star rating radio group */
+.star-rating {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Visually hide native radio buttons */
+.star-rating input[type="radio"],
+.star-rating .star-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Base star label */
+.star-rating label,
+.star-rating .star-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 2px;
+  margin: 0;
+  line-height: 1;
+  color: transparent;
+  transition: transform 0.15s ease-in-out;
+}
+
+/* Star icon: yellow stroke, transparent interior when empty */
+.star-rating .star-icon {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  stroke: #FFC107;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  display: block;
+  pointer-events: none;
+  transition: fill 0.15s ease-in-out, stroke 0.15s ease-in-out, transform 0.15s ease-in-out;
+}
+
+/* Micro-interaction: scale star slightly on hover */
+.star-rating label:hover .star-icon,
+.star-rating .star-label:hover .star-icon {
+  transform: none;
+}
+
+/* Accessibility focus indicator */
+.star-rating input:focus-visible + label,
+.star-rating input:focus-visible + .star-label {
+  outline: 2px dashed #FFC107;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Permanent selection: checked star and all preceding stars (subsequent siblings in DOM) */
+.star-rating input:checked ~ label,
+.star-rating input:checked ~ .star-label {
+  color: #FFC107;
+}
+
+.star-rating input:checked ~ label .star-icon,
+.star-rating input:checked ~ .star-label .star-icon {
+  fill: #FFC107;
+  stroke: #FFC107;
+}
+
+/* While hovering over the rating group, temporarily clear checked fill */
+.star-rating:hover input ~ label,
+.star-rating:hover input ~ .star-label {
+  color: transparent;
+}
+
+.star-rating:hover input ~ label .star-icon,
+.star-rating:hover input ~ .star-label .star-icon {
+  fill: transparent;
+}
+
+/* Hover state: hovered star and all preceding stars (subsequent siblings in DOM) */
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating .star-label:hover,
+.star-rating .star-label:hover ~ .star-label {
+  color: #FFC107 !important;
+}
+
+.star-rating label:hover .star-icon,
+.star-rating label:hover ~ label .star-icon,
+.star-rating .star-label:hover .star-icon,
+.star-rating .star-label:hover ~ .star-label .star-icon {
+  fill: #FFC107 !important;
+  stroke: #FFC107 !important;
+}
+
+/* Centered single submit button */
+.rating-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.rating-submit-btn {
+  min-width: 150px;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.55rem 2rem;
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+  .rating-row {
+    padding: 0.7rem 0.25rem;
+    gap: 0.5rem;
+  }
+
+  .rating-player-name {
+    font-size: 0.95rem;
+  }
+
+  .star-rating {
+    gap: 0.2rem;
+  }
+
+  .star-rating .star-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .rating-actions {
+    width: 100%;
+  }
+
+  .rating-submit-btn {
+    width: 100%;
+  }
+}
