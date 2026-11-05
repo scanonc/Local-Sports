@@ -225,6 +225,17 @@ h1, h2, h3, h4, h5, h6, .display, .navbar-brand {
   padding: 0.45rem 0.65rem;
 }
 
+.match-player-list .list-group-item > a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.match-player-list .list-group-item > a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--verde-oscuro);
+  color: var(--verde-oscuro);
+}
+
 .match-player-actions {
   display: inline-flex;
   align-items: center;
