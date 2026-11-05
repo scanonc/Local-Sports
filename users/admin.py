@@ -27,16 +27,15 @@ class CustomUserAdmin(UserAdmin):
 		'email',
 		'first_name',
 		'last_name',
-		'skill_level',
 		'is_staff',
 		'created_at',
 	)
-	list_filter = ('is_staff', 'is_superuser', 'is_active', 'skill_level')
+	list_filter = ('is_staff', 'is_superuser', 'is_active')
 	search_fields = ('username', 'first_name', 'last_name', 'email')
 
 	fieldsets = UserAdmin.fieldsets + (
-		('Local Sports', {'fields': ('skill_level', 'profile_picture', 'created_at')}),
+		('Local Sports', {'fields': ('profile_picture', 'created_at')}),
 	)
 	add_fieldsets = UserAdmin.add_fieldsets + (
-		('Local Sports', {'fields': ('skill_level', 'profile_picture')}),
+		('Local Sports', {'fields': ('profile_picture',)}),
 	)

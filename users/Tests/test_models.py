@@ -21,6 +21,15 @@ class UserModelTests(TestCase):
 
         self.assertEqual(str(user), 'Alex Morgan')
 
+    def test_user_has_no_persisted_skill_level(self):
+        user = User.objects.create_user(
+            username='player2',
+            email='player2@example.com',
+            password='testpass123',
+        )
+
+        self.assertFalse(hasattr(user, 'skill_level'))
+
 
 class NotificationModelTests(TestCase):
     def test_notification_tracks_read_state_for_a_user(self):
