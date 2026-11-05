@@ -139,3 +139,26 @@ class ReportUserTests(TestCase):
         self.assertEqual(
             Report.objects.filter(reporter=self.user, reported_user=self.other).count(), 2
         )
+
+
+class SignupViewTests(TestCase):
+    def test_player_can_sign_up_without_skill_level(self):
+        response = self.client.post(
+            reverse('users:signup'),
+            data={
+                'username': 'new_player',
+                'email': 'new_player@example.com',
+                'first_name': 'New',
+                'last_name': 'Player',
+                'profile_picture': '',
+                'password1': 'testpass123!',
+                'password2': 'testpass123!',
+            },
+        )
+
+        self.assertRedirects(response, reverse('home'))
+        self.assertTrue(User.objects.filter(username='new_player').exists())
+        self.assertNotContains(
+            self.client.get(reverse('users:signup')),
+            'Skill level',
+        )

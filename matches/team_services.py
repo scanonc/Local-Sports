@@ -1,6 +1,4 @@
 from django.db import transaction
-from django.db.models import Avg
-
 from .models import (
 	Match,
 	MatchStatus,
@@ -8,6 +6,7 @@ from .models import (
 	MatchTeamAssignment,
 	ParticipantStatus,
 )
+from .services.player_statistics import calculate_player_statistics
 
 
 TEAM_PATTERN = (
@@ -24,7 +23,7 @@ class TeamDistributionError(ValueError):
 
 def get_player_average_rating(player):
 	"""Use FR21 ratings, with a neutral value for unrated players."""
-	average = player.ratings_received.aggregate(value=Avg('stars'))['value']
+	average = calculate_player_statistics(player).average_rating
 	return average if average is not None else 3.0
 
 

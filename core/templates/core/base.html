@@ -51,7 +51,7 @@
                         <li><a class="dropdown-item" href="/admin/"><i class="bi bi-shield-lock-fill me-2" aria-hidden="true"></i>Admin</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% endif %}
-                        <li><a class="dropdown-item disabled" href="#" aria-disabled="true"><i class="bi bi-person-fill me-2" aria-hidden="true"></i>Profile <span class="badge rounded-pill bg-light text-dark ms-1">Coming soon</span></a></li>
+                        <li><a class="dropdown-item" href="{% url 'users:player_profile' user.pk %}"><i class="bi bi-person-fill me-2" aria-hidden="true"></i>Profile</a></li>
                         <li>
                             <a class="dropdown-item position-relative" href="{% url 'users:notifications' %}">
                                 <i class="bi bi-bell-fill me-2" aria-hidden="true"></i>Notifications

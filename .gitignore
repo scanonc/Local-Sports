@@ -33,3 +33,4 @@ staticfiles/
 Thumbs.db
 
 /Contexto
+seed.py

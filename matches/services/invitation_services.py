@@ -11,6 +11,7 @@ from ..models import (
     MatchVisibility,
     ParticipantStatus,
 )
+from .player_statistics import player_meets_match_skill_level
 
 
 def generate_match_invite_token(match):
@@ -57,6 +58,8 @@ def process_link_invitation(match, user, action):
             return False, 'This match has already started or finished.', None
         if match.organizer_id == user.id:
             return False, 'You are the organizer of this match.', None
+        if not player_meets_match_skill_level(user, match):
+            return False, 'Your skill level is not high enough for this match.', None
 
         participant = MatchParticipant.objects.filter(
             match=match, player=user,
