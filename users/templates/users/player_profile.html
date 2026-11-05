@@ -1,0 +1,99 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="profile-page">
+    <section class="profile-card profile-summary-card">
+        <div class="profile-avatar">
+            {% if player.profile_picture %}
+            <img src="{{ player.profile_picture }}" alt="{{ player }}">
+            {% else %}
+            {{ player.initials }}
+            {% endif %}
+        </div>
+        <div class="profile-identity">
+            <h1>{{ player.get_full_name|default:player.username }}</h1>
+            <p>@{{ player.username }}</p>
+        </div>
+        <div class="profile-rating">
+            <h2>Average Rating</h2>
+            {% if average_rating_display is not None %}
+            <div class="profile-rating-value">
+                <strong>{{ average_rating_display|floatformat:1 }}</strong>
+                <span class="profile-stars" aria-label="{{ average_rating_display }} out of 5 stars">
+                    {% for star in '12345' %}
+                    {% if forloop.counter <= rating_stars %}★{% else %}☆{% endif %}
+                    {% endfor %}
+                </span>
+            </div>
+            <p>({{ statistics.rating_count }} ratings)</p>
+            {% else %}
+            <p class="profile-no-rating">No ratings</p>
+            {% endif %}
+        </div>
+        <div class="profile-skill">
+            <h2>Skill Level</h2>
+            <span class="skill-badge skill-badge-{{ skill_level }}">{{ skill_level|capfirst }}</span>
+        </div>
+    </section>
+
+    <section class="profile-card">
+        <div class="profile-section-heading">
+            <i class="bi bi-trophy-fill" aria-hidden="true"></i>
+            <h2>Player Statistics</h2>
+        </div>
+        <div class="profile-stat-grid">
+            <div class="profile-stat">
+                <span>Matches Played</span>
+                <strong>{{ statistics.matches_played }}</strong>
+                <i class="bi bi-life-preserver" aria-hidden="true"></i>
+            </div>
+            <div class="profile-stat">
+                <span>Won</span>
+                <strong>{{ statistics.matches_won }}</strong>
+                <i class="bi bi-trophy-fill profile-stat-won" aria-hidden="true"></i>
+            </div>
+            <div class="profile-stat">
+                <span>Drawn</span>
+                <strong>{{ statistics.matches_drawn }}</strong>
+                <i class="bi bi-handshake-fill profile-stat-drawn" aria-hidden="true"></i>
+            </div>
+            <div class="profile-stat">
+                <span>Lost</span>
+                <strong>{{ statistics.matches_lost }}</strong>
+                <i class="bi bi-x-circle-fill profile-stat-lost" aria-hidden="true"></i>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-card">
+        <div class="profile-section-heading">
+            <i class="bi bi-calendar3" aria-hidden="true"></i>
+            <h2>Recent Matches</h2>
+        </div>
+        {% if recent_matches %}
+        <div class="table-responsive">
+            <table class="table profile-matches-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Match</th>
+                        <th scope="col">Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in recent_matches %}
+                    <tr>
+                        <td>{{ assignment.match.date_time|date:"M j, Y" }}</td>
+                        <td><a href="{{ assignment.match.get_absolute_url }}">{{ assignment.match.title }}</a></td>
+                        <td><span class="profile-result profile-result-{{ assignment.player_result|lower }}">{{ assignment.player_result }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="profile-empty-state">No completed matches with a registered result.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -31,7 +31,7 @@
                 <ul class="list-group match-player-list">
                     {% for assignment in team_a_assignments %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>{{ assignment.participant.player }}</span>
+                        <a href="{% url 'users:player_profile' assignment.participant.player_id %}">{{ assignment.participant.player }}</a>
                         {% if user.is_authenticated and assignment.participant.player_id != user.id %}
                         <span class="match-player-actions">
                             <form method="post" action="{% url 'users:favorite_toggle' assignment.participant.player_id %}">
@@ -53,7 +53,7 @@
                 <ul class="list-group match-player-list">
                     {% for assignment in team_b_assignments %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>{{ assignment.participant.player }}</span>
+                        <a href="{% url 'users:player_profile' assignment.participant.player_id %}">{{ assignment.participant.player }}</a>
                         {% if user.is_authenticated and assignment.participant.player_id != user.id %}
                         <span class="match-player-actions">
                             <form method="post" action="{% url 'users:favorite_toggle' assignment.participant.player_id %}">
@@ -76,7 +76,7 @@
         <ul class="list-group match-player-list">
             {% for participant in attendance_participants %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span>{{ participant.player }}</span>
+                <a href="{% url 'users:player_profile' participant.player_id %}">{{ participant.player }}</a>
                 <span class="match-player-actions">
                     {% if participant.attendance_confirmed %}
                     <span class="badge rounded-pill bg-success text-white border border-success px-2 py-1">Attendance confirmed</span>

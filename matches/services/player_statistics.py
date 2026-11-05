@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Case, CharField, Count, Q, Value, When
 
 from ..models import (
 	MatchResult,
@@ -112,3 +112,37 @@ def calculate_player_skill_level(player):
 	if average <= Decimal('4.0'):
 		return MatchSkillLevel.INTERMEDIATE
 	return MatchSkillLevel.ADVANCED
+
+
+def get_recent_matches(player, limit=3):
+	"""Return a player's most recent completed matches with their outcome."""
+	return (
+		MatchTeamAssignment.objects.filter(
+			participant__player=player,
+			participant__status=ParticipantStatus.CONFIRMED,
+			match__status=MatchStatus.CLOSED,
+			match__result__in=MatchResult.values,
+		)
+		.select_related('match')
+		.annotate(
+			player_result=Case(
+				When(
+					team=MatchTeam.A,
+					match__result=MatchResult.TEAM_A,
+					then=Value('Won'),
+				),
+				When(
+					team=MatchTeam.B,
+					match__result=MatchResult.TEAM_B,
+					then=Value('Won'),
+				),
+				When(
+					match__result=MatchResult.DRAW,
+					then=Value('Drawn'),
+				),
+				default=Value('Lost'),
+				output_field=CharField(),
+			),
+		)
+		.order_by('-match__date_time', '-match_id')[:limit]
+	)

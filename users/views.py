@@ -5,10 +5,16 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import CreateView, ListView
+from django.views.generic import CreateView, DetailView, ListView
 
 from .forms import ReportForm, SignUpForm
 from .models import FavoritePlayer, Notification, Report
+from matches.services.player_statistics import (
+	calculate_player_skill_level,
+	calculate_player_statistics,
+	get_recent_matches,
+	rounded_average_rating,
+)
 
 User = get_user_model()
 
@@ -30,6 +36,22 @@ class SignUpView(CreateView):
 		response = super().form_valid(form)
 		login(self.request, self.object)
 		return response
+
+
+class PlayerProfileView(LoginRequiredMixin, DetailView):
+	model = User
+	template_name = 'users/player_profile.html'
+	context_object_name = 'player'
+
+	def get_context_data(self, **kwargs):
+		context = super().get_context_data(**kwargs)
+		statistics = calculate_player_statistics(self.object)
+		context['statistics'] = statistics
+		context['average_rating_display'] = rounded_average_rating(statistics)
+		context['rating_stars'] = int(context['average_rating_display'] or 0)
+		context['skill_level'] = calculate_player_skill_level(self.object)
+		context['recent_matches'] = get_recent_matches(self.object)
+		return context
 
 
 class NotificationListView(LoginRequiredMixin, ListView):
