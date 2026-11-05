@@ -40,6 +40,7 @@ from .services.notification_services import (
     notify_match_cancellation,
     notify_match_update,
 )
+from .services.player_statistics import player_meets_match_skill_level
 from .result_services import MatchResultError, register_match_result
 from .team_services import TeamDistributionError, distribute_match_teams
 
@@ -386,6 +387,15 @@ class MatchJoinViaLinkView(LoginRequiredMixin, View):
 
         user = request.user
         user_is_organizer = match.organizer_id == user.id
+        if (
+            not user_is_organizer
+            and not player_meets_match_skill_level(user, match)
+        ):
+            return render(request, 'matches/match_invite.html', {
+                'error_message': 'Your skill level is not high enough for this match.',
+                'match': match,
+                'token': token,
+            })
 
         participant = MatchParticipant.objects.filter(
             match=match,
@@ -474,6 +484,9 @@ class MatchInvitePlayersView(LoginRequiredMixin, View):
             if match.has_started:
                 messages.error(request, 'This match has already started or finished.')
                 return redirect('matches:match_detail', pk=match.pk)
+            if not player_meets_match_skill_level(request.user, match):
+                messages.error(request, 'Your skill level is not high enough for this match.')
+                return redirect('matches:match_detail', pk=match.pk)
 
             confirmed_count = MatchParticipant.objects.filter(
                 match=match,
@@ -552,6 +565,9 @@ class MatchInvitationResponseView(LoginRequiredMixin, View):
 
             if match.has_started:
                 messages.error(request, 'This match has already started or finished.')
+                return redirect('matches:match_detail', pk=match.pk)
+            if not player_meets_match_skill_level(request.user, match):
+                messages.error(request, 'Your skill level is not high enough for this match.')
                 return redirect('matches:match_detail', pk=match.pk)
 
             participant = MatchParticipant.objects.filter(
@@ -790,6 +806,9 @@ class MatchJoinView(LoginRequiredMixin, View):
         if match.has_started:
             messages.error(request, 'This match has already started or finished.')
             return redirect('matches:match_detail', pk=match.pk)
+        if not player_meets_match_skill_level(request.user, match):
+            messages.error(request, 'Your skill level is not high enough for this match.')
+            return redirect('matches:match_detail', pk=match.pk)
 
         with transaction.atomic():
             match = Match.objects.select_for_update().get(pk=pk)
@@ -940,6 +959,9 @@ class MatchRequestJoinView(LoginRequiredMixin, View):
                 request,
                 'This match has already started or finished.',
             )
+            return redirect('matches:match_detail', pk=match.pk)
+        if not player_meets_match_skill_level(request.user, match):
+            messages.error(request, 'Your skill level is not high enough for this match.')
             return redirect('matches:match_detail', pk=match.pk)
 
         participant = MatchParticipant.objects.filter(

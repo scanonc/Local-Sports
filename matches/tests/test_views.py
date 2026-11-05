@@ -69,6 +69,28 @@ class MatchViewTests(TestCase):
         match = Match.objects.first()
         self.assertEqual(match.organizer, self.organizer)
 
+    def test_beginner_player_cannot_join_intermediate_match(self):
+        match = Match.objects.create(
+            organizer=self.organizer,
+            title='Intermediate Match',
+            date_time=timezone.now() + timedelta(days=2),
+            location='Central park',
+            skill_level='intermediate',
+            max_players=6,
+            visibility='public',
+        )
+
+        self.client.login(username='other', password='testpass123')
+        response = self.client.post(
+            reverse('matches:match_join', kwargs={'pk': match.pk}),
+            follow=True,
+        )
+
+        self.assertContains(response, 'Your skill level is not high enough for this match.')
+        self.assertFalse(
+            MatchParticipant.objects.filter(match=match, player=self.other_user).exists()
+        )
+
     def test_only_organizer_can_edit_match(self):
         match = Match.objects.create(
             organizer=self.organizer,
@@ -1024,7 +1046,7 @@ class MatchCancelViewTests(TestCase):
             title='Weekend Cup Match',
             date_time=timezone.now() + timedelta(days=2),
             location='Central Stadium',
-            skill_level='intermediate',
+            skill_level='beginner',
             max_players=10,
             visibility='public',
         )
@@ -1701,7 +1723,7 @@ class MatchJoinViaLinkParticipationTests(TestCase):
             title='Private Game',
             date_time=timezone.now() + timedelta(days=2),
             location='Private Turf',
-            skill_level='intermediate',
+            skill_level='beginner',
             max_players=6,
             visibility='approval_required',
             invite_token=uuid.uuid4(),

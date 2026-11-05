@@ -9,13 +9,19 @@ from ..models import (
 	Match,
 	MatchParticipant,
 	MatchResult,
+	MatchSkillLevel,
 	MatchStatus,
 	MatchTeam,
 	MatchTeamAssignment,
 	ParticipantStatus,
 	PlayerRating,
 )
-from ..services.player_statistics import calculate_player_statistics
+from ..services.player_statistics import (
+	calculate_player_skill_level,
+	calculate_player_statistics,
+	rounded_average_rating,
+)
+from ..team_services import get_player_average_rating
 
 
 User = get_user_model()
@@ -33,6 +39,7 @@ class PlayerStatisticsTests(TestCase):
 			email='player@example.com',
 			password='testpass123',
 		)
+		self.rating_batch = 0
 
 	def create_match(self, *, status=MatchStatus.CLOSED, result=MatchResult.DRAW):
 		match = Match.objects.create(
@@ -64,6 +71,31 @@ class PlayerStatisticsTests(TestCase):
 				team=team,
 			)
 		return participant
+
+	def create_ratings(self, stars):
+		batch = self.rating_batch
+		self.rating_batch += 1
+		match = self.create_match()
+		self.assign_player(match)
+		raters = [
+			User.objects.create_user(
+				username=f'rater_{batch}_{index}',
+				email=f'rater_{batch}_{index}@example.com',
+				password='testpass123',
+			)
+			for index in range(len(stars))
+		]
+		PlayerRating.objects.bulk_create(
+			[
+				PlayerRating(
+					match=match,
+					rater=rater,
+					player=self.player,
+					stars=value,
+				)
+				for rater, value in zip(raters, stars)
+			]
+		)
 
 	def test_player_without_matches_has_zero_stats_and_no_rating(self):
 		statistics = calculate_player_statistics(self.player)
@@ -100,25 +132,19 @@ class PlayerStatisticsTests(TestCase):
 		match = self.create_match(status=MatchStatus.CANCELLED, result=MatchResult.TEAM_A)
 		self.assign_player(match)
 
-		statistics = calculate_player_statistics(self.player)
-
-		self.assertEqual(statistics.matches_played, 0)
+		self.assertEqual(calculate_player_statistics(self.player).matches_played, 0)
 
 	def test_excludes_matches_player_left_before_teams_were_generated(self):
 		match = self.create_match()
 		self.assign_player(match, status=ParticipantStatus.LEFT)
 
-		statistics = calculate_player_statistics(self.player)
-
-		self.assertEqual(statistics.matches_played, 0)
+		self.assertEqual(calculate_player_statistics(self.player).matches_played, 0)
 
 	def test_excludes_matches_without_registered_result(self):
 		match = self.create_match(result='')
 		self.assign_player(match)
 
-		statistics = calculate_player_statistics(self.player)
-
-		self.assertEqual(statistics.matches_played, 0)
+		self.assertEqual(calculate_player_statistics(self.player).matches_played, 0)
 
 	def test_averages_all_received_ratings_not_match_averages(self):
 		first_match = self.create_match()
@@ -155,3 +181,46 @@ class PlayerStatisticsTests(TestCase):
 
 		self.assertIsNone(statistics.average_rating)
 		self.assertEqual(statistics.rating_count, 0)
+
+	def test_zero_one_and_two_ratings_are_beginner(self):
+		for stars in [[], [5], [5, 5]]:
+			with self.subTest(stars=stars):
+				PlayerRating.objects.all().delete()
+				if stars:
+					self.create_ratings(stars)
+				self.assertEqual(
+					calculate_player_skill_level(self.player),
+					MatchSkillLevel.BEGINNER,
+				)
+
+	def test_three_ratings_use_skill_level_boundaries(self):
+		for stars, expected in [
+			([3, 3, 3], MatchSkillLevel.BEGINNER),
+			([3] * 9 + [4], MatchSkillLevel.INTERMEDIATE),
+			([4, 4, 4], MatchSkillLevel.INTERMEDIATE),
+			([4] * 9 + [5], MatchSkillLevel.ADVANCED),
+			([5, 5, 5], MatchSkillLevel.ADVANCED),
+			([1, 1, 1], MatchSkillLevel.BEGINNER),
+		]:
+			with self.subTest(stars=stars):
+				PlayerRating.objects.all().delete()
+				self.create_ratings(stars)
+				self.assertEqual(calculate_player_skill_level(self.player), expected)
+
+	def test_average_3_04_is_displayed_as_3_0_and_is_beginner(self):
+		self.create_ratings([3] * 24 + [4])
+
+		statistics = calculate_player_statistics(self.player)
+
+		self.assertEqual(rounded_average_rating(statistics), Decimal('3.0'))
+		self.assertEqual(
+			calculate_player_skill_level(self.player),
+			MatchSkillLevel.BEGINNER,
+		)
+
+	def test_fr24_rating_uses_real_average_and_neutral_default(self):
+		self.assertEqual(get_player_average_rating(self.player), 3.0)
+
+		self.create_ratings([5, 3, 4])
+
+		self.assertEqual(get_player_average_rating(self.player), 4.0)
