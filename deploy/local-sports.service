@@ -1,0 +1,13 @@
+[Unit]
+Description=Local Sports (gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/srv/local-sports
+ExecStart=/srv/local-sports/venv/bin/gunicorn config.wsgi:application --workers 3 --bind 127.0.0.1:8000
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
