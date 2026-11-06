@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,16 +21,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
-# Quick-start development settings - unsuitable for production
+def env_bool(name, default):
+    return os.getenv(name, str(default)).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def env_list(name):
+    return [item.strip() for item in os.getenv(name, '').split(',') if item.strip()]
+
+
+# The defaults below are meant for local development. In production
+# (see deploy/README.md) they are overridden from the .env file.
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
+DEV_SECRET_KEY = 'django-insecure-v9(b$xe#01x4+$0@fsz8s*b1j=q88t=e8veqkt@n2a(!s5#75x'
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-v9(b$xe#01x4+$0@fsz8s*b1j=q88t=e8veqkt@n2a(!s5#75x'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', DEV_SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool('DJANGO_DEBUG', True)
 
-ALLOWED_HOSTS = []
+if not DEBUG and SECRET_KEY == DEV_SECRET_KEY:
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY must be set in .env when DJANGO_DEBUG is False.'
+    )
+
+# Comma-separated list, for example: DJANGO_ALLOWED_HOSTS=3.80.10.20,example.com
+ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS')
+
+# Only needed when the site is served over HTTPS, for example:
+# DJANGO_CSRF_TRUSTED_ORIGINS=https://example.com
+CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
 
 
 # Application definition
@@ -124,6 +146,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Target folder of `python manage.py collectstatic`; nginx serves it in production.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 AUTH_USER_MODEL = 'users.User'
 
