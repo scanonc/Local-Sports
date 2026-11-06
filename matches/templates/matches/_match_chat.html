@@ -1,8 +1,9 @@
+{% load i18n %}
 {% if user_can_use_chat %}
 <div id="match-chat">
     <div class="match-panel-heading">
         <i class="bi bi-chat-fill match-panel-icon" aria-hidden="true"></i>
-        <h2>Chat</h2>
+        <h2>{% trans "Chat" %}</h2>
     </div>
 
     {% if chat_messages %}
@@ -13,10 +14,10 @@
                 <span class="fw-semibold">
                     {{ chat_message.author }}
                     {% if chat_message.author_id == match.organizer_id %}
-                    <span class="badge rounded-pill bg-light text-dark border border-secondary ms-1">Organizer</span>
+                    <span class="badge rounded-pill bg-light text-dark border border-secondary ms-1">{% trans "Organizer" %}</span>
                     {% endif %}
                 </span>
-                <small class="text-muted">{{ chat_message.created_at|date:"M j, H:i" }}</small>
+                <small class="text-muted">{{ chat_message.created_at|date:_("M j, H:i") }}</small>
             </div>
             <p class="mb-0 chat-message-text">{{ chat_message.content }}</p>
         </div>
@@ -25,20 +26,20 @@
     {% else %}
     <div class="match-chat-empty">
         <i class="bi bi-chat-dots match-chat-empty-icon" aria-hidden="true"></i>
-        <p class="mb-0">No messages yet.</p>
-        <span>Start the conversation!</span>
+        <p class="mb-0">{% trans "No messages yet." %}</p>
+        <span>{% trans "Start the conversation!" %}</span>
     </div>
     {% endif %}
 
     {% if match.status == 'cancelled' %}
-    <p class="text-muted mb-0">This match was cancelled, so the chat is read-only.</p>
+    <p class="text-muted mb-0">{% trans "This match was cancelled, so the chat is read-only." %}</p>
     {% else %}
     <form method="post" action="{% url 'matches:match_message_create' match.pk %}">
         {% csrf_token %}
-        <label class="form-label visually-hidden" for="{{ chat_form.content.id_for_label }}">Message</label>
+        <label class="form-label visually-hidden" for="{{ chat_form.content.id_for_label }}">{% trans "Message" %}</label>
         <div class="input-group">
             {{ chat_form.content }}
-            <button type="submit" class="btn btn-primary" aria-label="Send message"><i class="bi bi-send-fill" aria-hidden="true"></i></button>
+            <button type="submit" class="btn btn-primary" aria-label="{% trans 'Send message' %}"><i class="bi bi-send-fill" aria-hidden="true"></i></button>
         </div>
     </form>
     {% endif %}

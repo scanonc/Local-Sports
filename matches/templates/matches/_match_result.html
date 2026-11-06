@@ -1,8 +1,9 @@
+{% load i18n %}
 {% comment %}FR20 - Result row for the Match Info list on the match detail page.{% endcomment %}
 {% if match.has_result %}
-<dt>Result</dt>
+<dt>{% trans "Result" %}</dt>
 <dd><span class="badge bg-success">{{ match.get_result_display }}</span></dd>
 {% elif match.awaiting_result %}
-<dt>Result</dt>
-<dd><span class="badge bg-warning text-dark">Pending</span></dd>
+<dt>{% trans "Result" %}</dt>
+<dd><span class="badge bg-warning text-dark">{% trans "Pending" %}</span></dd>
 {% endif %}

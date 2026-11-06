@@ -1,25 +1,26 @@
 {% extends 'core/base.html' %}
+{% load i18n %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <h1 class="h3 mb-4">Login</h1>
+                <h1 class="h3 mb-4">{% trans "Login" %}</h1>
                 <form method="post">
                     {% csrf_token %}
                     {{ form.non_field_errors }}
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+                        <label class="form-label" for="{{ form.username.id_for_label }}">{% trans "Username" %}</label>
                         {{ form.username }}
                         {{ form.username.errors }}
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+                        <label class="form-label" for="{{ form.password.id_for_label }}">{% trans "Password" %}</label>
                         {{ form.password }}
                         {{ form.password.errors }}
                     </div>
-                    <button class="btn btn-primary" type="submit">Login</button>
+                    <button class="btn btn-primary" type="submit">{% trans "Login" %}</button>
                 </form>
             </div>
         </div>

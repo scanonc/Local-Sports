@@ -1,8 +1,9 @@
+{% load i18n %}
 {% if rating_players %}
 <section class="card rating-panel" aria-labelledby="player-ratings-heading">
     <div class="card-body">
-        <h2 id="player-ratings-heading" class="rating-heading">Rate players</h2>
-        <p class="rating-subheading text-muted">Rate the other participants from 1 to 5 stars. Saving again updates your rating.</p>
+        <h2 id="player-ratings-heading" class="rating-heading">{% trans "Rate players" %}</h2>
+        <p class="rating-subheading text-muted">{% trans "Rate the other participants from 1 to 5 stars. Saving again updates your rating." %}</p>
 
         <form method="post" action="{% url 'matches:match_player_rating' match.pk %}" class="rating-form">
             {% csrf_token %}
@@ -10,37 +11,37 @@
                 {% for entry in rating_players %}
                 <div class="rating-row">
                     <span class="rating-player-name">{{ entry.player }}</span>
-                    <div class="star-rating" role="radiogroup" aria-label="Rating for {{ entry.player }}">
-                        <input type="radio" id="star-5-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="5" {% if entry.stars == 5 %}checked{% endif %} class="star-input" aria-label="5 stars">
-                        <label for="star-5-{{ entry.player.pk }}" class="star-label" title="5 stars">
+                    <div class="star-rating" role="radiogroup" aria-label="{% blocktrans with player=entry.player %}Rating for {{ player }}{% endblocktrans %}">
+                        <input type="radio" id="star-5-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="5" {% if entry.stars == 5 %}checked{% endif %} class="star-input" aria-label="{% trans '5 stars' %}">
+                        <label for="star-5-{{ entry.player.pk }}" class="star-label" title="{% trans '5 stars' %}">
                             <svg class="star-icon" viewBox="-1 -1 26 26" width="24" height="24" aria-hidden="true" focusable="false">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                             </svg>
                         </label>
 
-                        <input type="radio" id="star-4-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="4" {% if entry.stars == 4 %}checked{% endif %} class="star-input" aria-label="4 stars">
-                        <label for="star-4-{{ entry.player.pk }}" class="star-label" title="4 stars">
+                        <input type="radio" id="star-4-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="4" {% if entry.stars == 4 %}checked{% endif %} class="star-input" aria-label="{% trans '4 stars' %}">
+                        <label for="star-4-{{ entry.player.pk }}" class="star-label" title="{% trans '4 stars' %}">
                             <svg class="star-icon" viewBox="-1 -1 26 26" width="24" height="24" aria-hidden="true" focusable="false">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                             </svg>
                         </label>
 
-                        <input type="radio" id="star-3-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="3" {% if entry.stars == 3 %}checked{% endif %} class="star-input" aria-label="3 stars">
-                        <label for="star-3-{{ entry.player.pk }}" class="star-label" title="3 stars">
+                        <input type="radio" id="star-3-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="3" {% if entry.stars == 3 %}checked{% endif %} class="star-input" aria-label="{% trans '3 stars' %}">
+                        <label for="star-3-{{ entry.player.pk }}" class="star-label" title="{% trans '3 stars' %}">
                             <svg class="star-icon" viewBox="-1 -1 26 26" width="24" height="24" aria-hidden="true" focusable="false">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                             </svg>
                         </label>
 
-                        <input type="radio" id="star-2-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="2" {% if entry.stars == 2 %}checked{% endif %} class="star-input" aria-label="2 stars">
-                        <label for="star-2-{{ entry.player.pk }}" class="star-label" title="2 stars">
+                        <input type="radio" id="star-2-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="2" {% if entry.stars == 2 %}checked{% endif %} class="star-input" aria-label="{% trans '2 stars' %}">
+                        <label for="star-2-{{ entry.player.pk }}" class="star-label" title="{% trans '2 stars' %}">
                             <svg class="star-icon" viewBox="-1 -1 26 26" width="24" height="24" aria-hidden="true" focusable="false">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                             </svg>
                         </label>
 
-                        <input type="radio" id="star-1-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="1" {% if entry.stars == 1 %}checked{% endif %} class="star-input" aria-label="1 star">
-                        <label for="star-1-{{ entry.player.pk }}" class="star-label" title="1 star">
+                        <input type="radio" id="star-1-{{ entry.player.pk }}" name="stars_{{ entry.player.pk }}" value="1" {% if entry.stars == 1 %}checked{% endif %} class="star-input" aria-label="{% trans '1 star' %}">
+                        <label for="star-1-{{ entry.player.pk }}" class="star-label" title="{% trans '1 star' %}">
                             <svg class="star-icon" viewBox="-1 -1 26 26" width="24" height="24" aria-hidden="true" focusable="false">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                             </svg>
@@ -51,7 +52,7 @@
             </div>
 
             <div class="rating-actions">
-                <button class="btn btn-primary rating-submit-btn" type="submit">Save ratings</button>
+                <button class="btn btn-primary rating-submit-btn" type="submit">{% trans "Save ratings" %}</button>
             </div>
         </form>
     </div>

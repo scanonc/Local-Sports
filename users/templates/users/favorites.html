@@ -1,9 +1,10 @@
 {% extends 'core/base.html' %}
+{% load i18n %}
 
 {% block content %}
 <div class="card shadow-sm">
     <div class="card-body">
-        <h2 class="mb-3">My favorite players</h2>
+        <h2 class="mb-3">{% trans "My favorite players" %}</h2>
 
         {% if favorites %}
             <div class="list-group">
@@ -13,13 +14,13 @@
                         <form method="post" action="{% url 'users:favorite_toggle' favorite.favorite.pk %}">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="{% url 'users:favorites' %}">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">{% trans "Remove" %}</button>
                         </form>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="alert alert-light border">You haven't added any favorite players yet.</div>
+            <div class="alert alert-light border">{% trans "You haven't added any favorite players yet." %}</div>
         {% endif %}
     </div>
 </div>
