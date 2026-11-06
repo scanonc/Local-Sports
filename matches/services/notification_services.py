@@ -2,6 +2,7 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
+from django.utils.translation import gettext as _
 import resend
 
 from users.models import Notification
@@ -121,7 +122,7 @@ def notify_match_cancellation(request, match=None):
 
     if not recipients:
         if request:
-            messages.info(request, 'No confirmed participants to notify.')
+            messages.info(request, _('No confirmed participants to notify.'))
         return
 
     cancellation_message = (
@@ -152,6 +153,8 @@ def notify_match_cancellation(request, match=None):
     if request:
         messages.info(
             request,
-            f"Notification sent to {len(recipients)} confirmed participant(s): "
-            f"{', '.join(recipient_usernames)}.",
+            _('Notification sent to %(count)d confirmed participant(s): %(names)s.') % {
+                'count': len(recipients),
+                'names': ', '.join(recipient_usernames),
+            },
         )

@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .models import Match, MatchResult, MatchStatus
 
@@ -16,27 +17,27 @@ def register_match_result(match, result):
 	only once: a registered result is final.
 	"""
 	if result not in MatchResult.values:
-		raise MatchResultError('Select Team A, Team B or a draw.')
+		raise MatchResultError(_('Select Team A, Team B or a draw.'))
 
 	with transaction.atomic():
 		locked = Match.objects.select_for_update().get(pk=match.pk)
 
 		if locked.status == MatchStatus.CANCELLED:
-			raise MatchResultError('Cancelled matches cannot have a result.')
+			raise MatchResultError(_('Cancelled matches cannot have a result.'))
 
 		if locked.status != MatchStatus.CLOSED or not locked.has_generated_teams:
 			raise MatchResultError(
-				'Teams must be generated before the result can be registered.'
+				_('Teams must be generated before the result can be registered.')
 			)
 
 		if not locked.has_started:
 			raise MatchResultError(
-				'The result can only be registered once the match has started.'
+				_('The result can only be registered once the match has started.')
 			)
 
 		if locked.has_result:
 			raise MatchResultError(
-				'The result of this match has already been registered.'
+				_('The result of this match has already been registered.')
 			)
 
 		locked.result = result

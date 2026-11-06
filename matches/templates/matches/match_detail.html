@@ -1,14 +1,15 @@
 {% extends 'core/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
 {% if match.status == 'cancelled' %}
 <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
-    <strong>Notice:</strong>&nbsp; This match has been cancelled by the organizer. No further actions can be taken.
+    <strong>{% trans "Notice:" %}</strong>&nbsp; {% trans "This match has been cancelled by the organizer. No further actions can be taken." %}
 </div>
 {% elif match.status == 'closed' %}
 <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
-    <strong>Notice:</strong>&nbsp; Teams have been generated. This match is closed and cannot accept new participants.
+    <strong>{% trans "Notice:" %}</strong>&nbsp; {% trans "Teams have been generated. This match is closed and cannot accept new participants." %}
 </div>
 {% endif %}
 
@@ -17,17 +18,17 @@
         <div class="match-panel-heading">
             {% if match.has_generated_teams %}
             <i class="bi bi-people-fill match-panel-icon" aria-hidden="true"></i>
-            <h1>Teams</h1>
+            <h1>{% trans "Teams" %}</h1>
             {% else %}
             <i class="bi bi-people-fill match-panel-icon" aria-hidden="true"></i>
-            <h1>Participants</h1>
+            <h1>{% trans "Participants" %}</h1>
             {% endif %}
         </div>
 
         {% if match.has_generated_teams %}
         <div class="row g-3">
             <div class="col-md-6">
-                <h2 class="match-subheading">Team A</h2>
+                <h2 class="match-subheading">{% trans "Team A" %}</h2>
                 <ul class="list-group match-player-list">
                     {% for assignment in team_a_assignments %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -37,11 +38,11 @@
                             <form method="post" action="{% url 'users:favorite_toggle' assignment.participant.player_id %}">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.path }}">
-                                <button type="submit" class="match-icon-button{% if assignment.participant.player_id in favorite_player_ids %} is-favorite{% endif %}" aria-label="{% if assignment.participant.player_id in favorite_player_ids %}Remove from favorites{% else %}Add to favorites{% endif %}" title="{% if assignment.participant.player_id in favorite_player_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
+                                <button type="submit" class="match-icon-button{% if assignment.participant.player_id in favorite_player_ids %} is-favorite{% endif %}" aria-label="{% if assignment.participant.player_id in favorite_player_ids %}{% trans 'Remove from favorites' %}{% else %}{% trans 'Add to favorites' %}{% endif %}" title="{% if assignment.participant.player_id in favorite_player_ids %}{% trans 'Remove from favorites' %}{% else %}{% trans 'Add to favorites' %}{% endif %}">
                                     <i class="bi {% if assignment.participant.player_id in favorite_player_ids %}bi-star-fill{% else %}bi-star{% endif %}" aria-hidden="true"></i>
                                 </button>
                             </form>
-                            <a href="{% url 'users:report_user' assignment.participant.player_id %}" class="match-icon-button report-icon" aria-label="Report participant" title="Report participant"><i class="bi bi-flag-fill" aria-hidden="true"></i></a>
+                            <a href="{% url 'users:report_user' assignment.participant.player_id %}" class="match-icon-button report-icon" aria-label="{% trans 'Report participant' %}" title="{% trans 'Report participant' %}"><i class="bi bi-flag-fill" aria-hidden="true"></i></a>
                         </span>
                         {% endif %}
                     </li>
@@ -49,7 +50,7 @@
                 </ul>
             </div>
             <div class="col-md-6">
-                <h2 class="match-subheading">Team B</h2>
+                <h2 class="match-subheading">{% trans "Team B" %}</h2>
                 <ul class="list-group match-player-list">
                     {% for assignment in team_b_assignments %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -59,11 +60,11 @@
                             <form method="post" action="{% url 'users:favorite_toggle' assignment.participant.player_id %}">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.path }}">
-                                <button type="submit" class="match-icon-button{% if assignment.participant.player_id in favorite_player_ids %} is-favorite{% endif %}" aria-label="{% if assignment.participant.player_id in favorite_player_ids %}Remove from favorites{% else %}Add to favorites{% endif %}" title="{% if assignment.participant.player_id in favorite_player_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
+                                <button type="submit" class="match-icon-button{% if assignment.participant.player_id in favorite_player_ids %} is-favorite{% endif %}" aria-label="{% if assignment.participant.player_id in favorite_player_ids %}{% trans 'Remove from favorites' %}{% else %}{% trans 'Add to favorites' %}{% endif %}" title="{% if assignment.participant.player_id in favorite_player_ids %}{% trans 'Remove from favorites' %}{% else %}{% trans 'Add to favorites' %}{% endif %}">
                                     <i class="bi {% if assignment.participant.player_id in favorite_player_ids %}bi-star-fill{% else %}bi-star{% endif %}" aria-hidden="true"></i>
                                 </button>
                             </form>
-                            <a href="{% url 'users:report_user' assignment.participant.player_id %}" class="match-icon-button report-icon" aria-label="Report participant" title="Report participant"><i class="bi bi-flag-fill" aria-hidden="true"></i></a>
+                            <a href="{% url 'users:report_user' assignment.participant.player_id %}" class="match-icon-button report-icon" aria-label="{% trans 'Report participant' %}" title="{% trans 'Report participant' %}"><i class="bi bi-flag-fill" aria-hidden="true"></i></a>
                         </span>
                         {% endif %}
                     </li>
@@ -79,26 +80,26 @@
                 <a href="{% url 'users:player_profile' participant.player_id %}">{{ participant.player }}</a>
                 <span class="match-player-actions">
                     {% if participant.attendance_confirmed %}
-                    <span class="badge rounded-pill bg-success text-white border border-success px-2 py-1">Attendance confirmed</span>
+                    <span class="badge rounded-pill bg-success text-white border border-success px-2 py-1">{% trans "Attendance confirmed" %}</span>
                     {% else %}
-                    <span class="badge rounded-pill bg-light text-dark border border-secondary px-2 py-1">Pending Confirmation</span>
+                    <span class="badge rounded-pill bg-light text-dark border border-secondary px-2 py-1">{% trans "Pending Confirmation" %}</span>
                     {% endif %}
                     {% if user.is_authenticated and participant.player_id != user.id %}
                     <form method="post" action="{% url 'users:favorite_toggle' participant.player_id %}">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.path }}">
-                        <button type="submit" class="match-icon-button{% if participant.player_id in favorite_player_ids %} is-favorite{% endif %}" aria-label="{% if participant.player_id in favorite_player_ids %}Remove from favorites{% else %}Add to favorites{% endif %}" title="{% if participant.player_id in favorite_player_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
+                        <button type="submit" class="match-icon-button{% if participant.player_id in favorite_player_ids %} is-favorite{% endif %}" aria-label="{% if participant.player_id in favorite_player_ids %}{% trans 'Remove from favorites' %}{% else %}{% trans 'Add to favorites' %}{% endif %}" title="{% if participant.player_id in favorite_player_ids %}{% trans 'Remove from favorites' %}{% else %}{% trans 'Add to favorites' %}{% endif %}">
                             <i class="bi {% if participant.player_id in favorite_player_ids %}bi-star-fill{% else %}bi-star{% endif %}" aria-hidden="true"></i>
                         </button>
                     </form>
-                    <a href="{% url 'users:report_user' participant.player_id %}" class="match-icon-button report-icon" aria-label="Report participant" title="Report participant"><i class="bi bi-flag-fill" aria-hidden="true"></i></a>
+                    <a href="{% url 'users:report_user' participant.player_id %}" class="match-icon-button report-icon" aria-label="{% trans 'Report participant' %}" title="{% trans 'Report participant' %}"><i class="bi bi-flag-fill" aria-hidden="true"></i></a>
                     {% endif %}
                 </span>
             </li>
             {% endfor %}
         </ul>
         {% else %}
-        <p class="text-muted mb-0">No confirmed participants yet.</p>
+        <p class="text-muted mb-0">{% trans "No confirmed participants yet." %}</p>
         {% endif %}
         {% endif %}
     </section>
@@ -106,25 +107,25 @@
     <section class="match-panel match-panel-info">
         <div class="match-panel-heading">
             <i class="bi bi-info-circle-fill match-panel-icon" aria-hidden="true"></i>
-            <h2>Match Info</h2>
+            <h2>{% trans "Match Info" %}</h2>
         </div>
         <dl class="match-info-list mb-0">
-            <dt>Status</dt>
+            <dt>{% trans "Status" %}</dt>
             <dd>
                 {% if match.status == 'cancelled' %}
-                <span class="badge bg-danger">Cancelled</span>
+                <span class="badge bg-danger">{% trans "Cancelled" %}</span>
                 {% elif match.has_started %}
-                <span class="badge bg-secondary">Finished</span>
+                <span class="badge bg-secondary">{% trans "Finished" %}</span>
                 {% elif match.status == 'closed' %}
-                <span class="badge bg-info text-dark">Closed</span>
+                <span class="badge bg-info text-dark">{% trans "Closed" %}</span>
                 {% else %}
-                <span class="badge bg-success">Active</span>
+                <span class="badge bg-success">{% trans "Active" %}</span>
                 {% endif %}
             </dd>
             {% include 'matches/_match_result.html' %}
-            <dt>Date and time</dt><dd>{{ match.date_time }}</dd>
-            <dt>Location</dt><dd>{{ match.location }}</dd>
-            <dt>Skill level</dt>
+            <dt>{% trans "Date and time" %}</dt><dd>{{ match.date_time }}</dd>
+            <dt>{% trans "Location" %}</dt><dd>{{ match.location }}</dd>
+            <dt>{% trans "Skill level" %}</dt>
             <dd>
                 {% if match.skill_level == 'beginner' %}
                 <span class="skill-badge skill-badge-beginner">{{ match.get_skill_level_display }}</span>
@@ -134,11 +135,11 @@
                 <span class="skill-badge skill-badge-advanced">{{ match.get_skill_level_display }}</span>
                 {% endif %}
             </dd>
-            <dt>Maximum players</dt><dd>{{ match.max_players }}</dd>
-            <dt>Visibility</dt><dd>{{ match.get_visibility_display }}</dd>
-            <dt>Organizer</dt><dd>{{ match.organizer }}</dd>
-            <dt>Players joined</dt><dd>{{ match.confirmed_participants_count }} / {{ match.max_players }}</dd>
-            <dt>Waiting list</dt><dd>{{ waiting_list_count }}</dd>
+            <dt>{% trans "Maximum players" %}</dt><dd>{{ match.max_players }}</dd>
+            <dt>{% trans "Visibility" %}</dt><dd>{{ match.get_visibility_display }}</dd>
+            <dt>{% trans "Organizer" %}</dt><dd>{{ match.organizer }}</dd>
+            <dt>{% trans "Players joined" %}</dt><dd>{{ match.confirmed_participants_count }} / {{ match.max_players }}</dd>
+            <dt>{% trans "Waiting list" %}</dt><dd>{{ waiting_list_count }}</dd>
         </dl>
     </section>
 
@@ -149,43 +150,43 @@
     <section class="match-panel match-panel-actions">
         <div class="match-panel-heading">
             <i class="bi bi-lightning-fill match-panel-icon" aria-hidden="true"></i>
-            <h2>Match Actions</h2>
+            <h2>{% trans "Match Actions" %}</h2>
         </div>
         <div class="match-action-list">
             {% include 'matches/_match_ratings.html' %}
             {% if google_calendar_url %}
             <div>
-                <a class="btn btn-outline-primary w-100" href="{{ google_calendar_url }}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
+                <a class="btn btn-outline-primary w-100" href="{{ google_calendar_url }}" target="_blank" rel="noopener noreferrer">{% trans "Add to Google Calendar" %}</a>
             </div>
             {% endif %}
             {% if match.status == 'cancelled' %}
-            <span class="text-muted">This match is cancelled.</span>
+            <span class="text-muted">{% trans "This match is cancelled." %}</span>
             {% elif user_is_organizer %}
             {% if match.status != 'closed' %}
-            <a class="btn btn-outline-primary w-100" href="{% url 'matches:match_update' match.pk %}">Edit match</a>
+            <a class="btn btn-outline-primary w-100" href="{% url 'matches:match_update' match.pk %}">{% trans "Edit match" %}</a>
             {% endif %}
             <form method="post" action="{% url 'matches:match_cancel' match.pk %}" onsubmit="return confirm('Are you sure you want to cancel this match? Confirmed participants will be notified and this action cannot be undone.');">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger w-100">Cancel match</button>
+                <button type="submit" class="btn btn-outline-danger w-100">{% trans "Cancel match" %}</button>
             </form>
             {% if can_generate_teams %}
             <form method="post" action="{% url 'matches:match_generate_teams' match.pk %}" onsubmit="return confirm('Generate teams now? This will close the match and cannot be undone unless a participant leaves.');">
                 {% csrf_token %}
                 <input type="hidden" name="confirm" value="yes">
-                <button type="submit" class="btn btn-primary w-100" aria-label="Generate teams"><i class="bi bi-people-fill" aria-hidden="true"></i>&nbsp; Matchmaking</button>
+                <button type="submit" class="btn btn-primary w-100" aria-label="{% trans 'Generate teams' %}"><i class="bi bi-people-fill" aria-hidden="true"></i>&nbsp; {% trans "Matchmaking" %}</button>
             </form>
             {% else %}
-            <button type="button" class="btn btn-outline-secondary w-100" disabled title="{{ team_generation_block_reason }}">Matchmaking</button>
+            <button type="button" class="btn btn-outline-secondary w-100" disabled title="{{ team_generation_block_reason }}">{% trans "Matchmaking" %}</button>
             {% endif %}
             {% if match.status != 'closed' %}
             <details class="match-invite-details">
-                <summary class="btn btn-outline-primary w-100"><i class="bi bi-person-plus-fill" aria-hidden="true"></i>&nbsp; Invite players</summary>
+                <summary class="btn btn-outline-primary w-100"><i class="bi bi-person-plus-fill" aria-hidden="true"></i>&nbsp; {% trans "Invite players" %}</summary>
                 <form method="post" action="{% url 'matches:match_invite_players' match.pk %}" class="match-invite-form">
                     {% csrf_token %}
-                    <label for="invite-player" class="form-label">Username to invite</label>
+                    <label for="invite-player" class="form-label">{% trans "Username to invite" %}</label>
                     <div class="input-group">
-                        <input id="invite-player" name="player_identifier" type="text" class="form-control" placeholder="Enter username" required>
-                        <button type="submit" class="btn btn-primary">Send invitation</button>
+                        <input id="invite-player" name="player_identifier" type="text" class="form-control" placeholder="{% trans 'Enter username' %}" required>
+                        <button type="submit" class="btn btn-primary">{% trans "Send invitation" %}</button>
                     </div>
                 </form>
             </details>
@@ -193,79 +194,79 @@
             {% if invite_url %}
             <form method="post" action="{% url 'matches:match_invite_link' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-link-45deg" aria-hidden="true"></i>&nbsp; Generate shareable link</button>
+                <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-link-45deg" aria-hidden="true"></i>&nbsp; {% trans "Generate shareable link" %}</button>
             </form>
             {% else %}
             <form method="post" action="{% url 'matches:match_invite_link' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-link-45deg" aria-hidden="true"></i>&nbsp; Generate shareable link</button>
+                <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-link-45deg" aria-hidden="true"></i>&nbsp; {% trans "Generate shareable link" %}</button>
             </form>
             {% endif %}
             {% elif match.status == 'closed' %}
             {% if user_is_participant and not match.has_started %}
             <form method="post" action="{% url 'matches:match_leave' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger w-100">Leave match</button>
+                <button type="submit" class="btn btn-outline-danger w-100">{% trans "Leave match" %}</button>
             </form>
             {% else %}
-            <span class="text-muted">This match is closed and does not accept new participants.</span>
+            <span class="text-muted">{% trans "This match is closed and does not accept new participants." %}</span>
             {% endif %}
             {% elif user.is_authenticated %}
             {% if pending_invitation %}
-            <span class="text-info">You were invited by {{ pending_invitation.organizer }}.</span>
+            <span class="text-info">{% blocktrans with organizer=pending_invitation.organizer %}You were invited by {{ organizer }}.{% endblocktrans %}</span>
             <form method="post" action="{% url 'matches:match_invitation_response' match.pk pending_invitation.pk 'accept' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success w-100">Accept invitation</button>
+                <button type="submit" class="btn btn-success w-100">{% trans "Accept invitation" %}</button>
             </form>
             <form method="post" action="{% url 'matches:match_invitation_response' match.pk pending_invitation.pk 'decline' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger w-100">Reject invitation</button>
+                <button type="submit" class="btn btn-outline-danger w-100">{% trans "Reject invitation" %}</button>
             </form>
             {% elif user_is_participant %}
             {% if not match.has_started %}
             <form method="post" action="{% url 'matches:match_leave' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger w-100">Leave match</button>
+                <button type="submit" class="btn btn-outline-danger w-100">{% trans "Leave match" %}</button>
             </form>
             {% endif %}
             {% if user_has_confirmed_attendance %}
-            <span class="text-success">Attendance confirmed.</span>
+            <span class="text-success">{% trans "Attendance confirmed." %}</span>
             {% else %}
             <form method="post" action="{% url 'matches:match_attendance' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success w-100">Confirm attendance</button>
+                <button type="submit" class="btn btn-success w-100">{% trans "Confirm attendance" %}</button>
             </form>
             {% endif %}
             {% elif user_is_waiting %}
-            <span class="text-muted">You are #{{ user_waiting_position }} on the waiting list.</span>
+            <span class="text-muted">{% blocktrans with position=user_waiting_position %}You are #{{ position }} on the waiting list.{% endblocktrans %}</span>
             <form method="post" action="{% url 'matches:match_leave' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger w-100">Leave waiting list</button>
+                <button type="submit" class="btn btn-outline-danger w-100">{% trans "Leave waiting list" %}</button>
             </form>
             {% elif match.has_started %}
-            <span class="text-muted">This match has already started.</span>
+            <span class="text-muted">{% trans "This match has already started." %}</span>
             {% elif match.visibility == 'public' and match.is_full %}
             <form method="post" action="{% url 'matches:match_join' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-warning w-100">Join waiting list</button>
+                <button type="submit" class="btn btn-outline-warning w-100">{% trans "Join waiting list" %}</button>
             </form>
             {% elif match.visibility == 'public' %}
             <form method="post" action="{% url 'matches:match_join' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-primary w-100">Join match</button>
+                <button type="submit" class="btn btn-primary w-100">{% trans "Join match" %}</button>
             </form>
             {% elif match.visibility == 'approval_required' and match.is_full %}
-            <span class="text-muted">This match is full.</span>
+            <span class="text-muted">{% trans "This match is full." %}</span>
             {% elif match.visibility == 'approval_required' and user_has_pending_request %}
-            <span class="text-muted">Your request is pending organizer approval.</span>
+            <span class="text-muted">{% trans "Your request is pending organizer approval." %}</span>
             {% elif match.visibility == 'approval_required' %}
             <form method="post" action="{% url 'matches:match_request_join' match.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-primary w-100">Request to join</button>
+                <button type="submit" class="btn btn-primary w-100">{% trans "Request to join" %}</button>
             </form>
             {% endif %}
             {% else %}
-            <a class="btn btn-primary w-100" href="{% url 'users:login' %}?next={{ request.path }}">Login to join</a>
+            <a class="btn btn-primary w-100" href="{% url 'users:login' %}?next={{ request.path }}">{% trans "Login to join" %}</a>
             {% endif %}
         </div>
     </section>
@@ -274,14 +275,14 @@
 {% if match.status != 'cancelled' and user_is_organizer %}
 <div id="shareable-link" class="match-secondary-panel mt-4">
     {% if invite_url %}
-    <h2 class="h5 mb-3">Shareable invitation link</h2>
+    <h2 class="h5 mb-3">{% trans "Shareable invitation link" %}</h2>
     <div class="input-group mb-2">
         <input type="text" class="form-control" id="invite-link-input" value="{{ invite_url }}" readonly>
-        <button class="btn btn-outline-primary" type="button" id="copy-invite-link-btn" onclick="navigator.clipboard.writeText(document.getElementById('invite-link-input').value).then(() => { const btn = document.getElementById('copy-invite-link-btn'); const orig = btn.innerText; btn.innerText = 'Copied!'; setTimeout(() => { btn.innerText = orig; }, 2000); });">Copy link</button>
+        <button class="btn btn-outline-primary" type="button" id="copy-invite-link-btn" onclick="navigator.clipboard.writeText(document.getElementById('invite-link-input').value).then(() => { const btn = document.getElementById('copy-invite-link-btn'); const orig = btn.innerText; btn.innerText = '{% trans "Copied!" %}'; setTimeout(() => { btn.innerText = orig; }, 2000); });">{% trans "Copy link" %}</button>
     </div>
     <form method="post" action="{% url 'matches:match_invite_link' match.pk %}" class="mb-4">
         {% csrf_token %}
-        <button type="submit" class="btn btn-sm btn-outline-secondary">Regenerate link</button>
+        <button type="submit" class="btn btn-sm btn-outline-secondary">{% trans "Regenerate link" %}</button>
     </form>
     {% endif %}
 </div>
@@ -289,17 +290,17 @@
 
 {% if match.status != 'cancelled' and user_is_organizer and pending_join_requests %}
 <div class="match-secondary-panel mt-4">
-    <h2 class="h5 mb-3">Join requests</h2>
+    <h2 class="h5 mb-3">{% trans "Join requests" %}</h2>
     <div class="list-group">
         {% for join_request in pending_join_requests %}
         <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div><strong>{{ join_request.player }}</strong><div class="text-muted small">Requested on {{ join_request.request_date }}</div></div>
+            <div><strong>{{ join_request.player }}</strong><div class="text-muted small">{% blocktrans with date=join_request.request_date %}Requested on {{ date }}{% endblocktrans %}</div></div>
             <div class="d-flex gap-2">
                 <form method="post" action="{% url 'matches:match_request_accept' match.pk join_request.pk %}">
-                    {% csrf_token %}<button type="submit" class="btn btn-sm btn-success">Accept</button>
+                    {% csrf_token %}<button type="submit" class="btn btn-sm btn-success">{% trans "Accept" %}</button>
                 </form>
                 <form method="post" action="{% url 'matches:match_request_reject' match.pk join_request.pk %}">
-                    {% csrf_token %}<button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                    {% csrf_token %}<button type="submit" class="btn btn-sm btn-danger">{% trans "Reject" %}</button>
                 </form>
             </div>
         </div>
@@ -310,7 +311,7 @@
 
 {% if match.status != 'cancelled' and user_is_organizer and waiting_list %}
 <div class="match-secondary-panel mt-4">
-    <h2 class="h5 mb-3">Waiting list</h2>
+    <h2 class="h5 mb-3">{% trans "Waiting list" %}</h2>
     <ol class="list-group list-group-numbered">
         {% for participant in waiting_list %}
         <li class="list-group-item">{{ participant.player }}</li>

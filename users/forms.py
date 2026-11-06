@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.utils.translation import gettext_lazy as _
 
 from .models import Report, User
 
@@ -23,6 +24,6 @@ class ReportForm(forms.ModelForm):
         widgets = {
             'reason': forms.Select(attrs={'class': 'form-select'}),
             'details': forms.Textarea(
-                attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Optional details'}
+                attrs={'class': 'form-control', 'rows': 4, 'placeholder': _('Optional details')}
             ),
         }

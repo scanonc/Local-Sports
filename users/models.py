@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class User(AbstractUser):
@@ -77,10 +78,10 @@ class FavoritePlayer(models.Model):
 
 
 class ReportReason(models.TextChoices):
-	NO_SHOW = 'no_show', 'Did not show up'
-	UNSPORTSMANLIKE_CONDUCT = 'unsportsmanlike_conduct', 'Unsportsmanlike conduct'
-	ABUSIVE_LANGUAGE = 'abusive_language', 'Abusive language'
-	OTHER = 'other', 'Other'
+	NO_SHOW = 'no_show', _('Did not show up')
+	UNSPORTSMANLIKE_CONDUCT = 'unsportsmanlike_conduct', _('Unsportsmanlike conduct')
+	ABUSIVE_LANGUAGE = 'abusive_language', _('Abusive language')
+	OTHER = 'other', _('Other')
 
 
 class Report(models.Model):

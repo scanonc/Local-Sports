@@ -3,29 +3,30 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 
 class MatchSkillLevel(models.TextChoices):
-	BEGINNER = 'beginner', 'Beginner'
-	INTERMEDIATE = 'intermediate', 'Intermediate'
-	ADVANCED = 'advanced', 'Advanced'
+	BEGINNER = 'beginner', _('Beginner')
+	INTERMEDIATE = 'intermediate', _('Intermediate')
+	ADVANCED = 'advanced', _('Advanced')
 
 
 class MatchVisibility(models.TextChoices):
-	PUBLIC = 'public', 'Public'
-	APPROVAL_REQUIRED = 'approval_required', 'Approval required'
+	PUBLIC = 'public', _('Public')
+	APPROVAL_REQUIRED = 'approval_required', _('Approval required')
 
 
 class MatchStatus(models.TextChoices):
-	ACTIVE = 'active', 'Active'
-	CLOSED = 'closed', 'Closed'
-	CANCELLED = 'cancelled', 'Cancelled'
+	ACTIVE = 'active', _('Active')
+	CLOSED = 'closed', _('Closed')
+	CANCELLED = 'cancelled', _('Cancelled')
 
 
 class MatchResult(models.TextChoices):
-	TEAM_A = 'team_a', 'Team A won'
-	TEAM_B = 'team_b', 'Team B won'
-	DRAW = 'draw', 'Draw'
+	TEAM_A = 'team_a', _('Team A won')
+	TEAM_B = 'team_b', _('Team B won')
+	DRAW = 'draw', _('Draw')
 
 
 class Match(models.Model):
@@ -110,7 +111,7 @@ class Match(models.Model):
 			and self.date_time < timezone.now()
 			and self._date_time_is_being_set()
 		):
-			errors['date_time'] = 'Match date and time cannot be in the past.'
+			errors['date_time'] = _('Match date and time cannot be in the past.')
 
 		if (
 			self.max_players is not None
@@ -121,7 +122,7 @@ class Match(models.Model):
 			)
 		):
 			errors['max_players'] = (
-				'Maximum number of players must be an even number between 6 and 40.'
+				_('Maximum number of players must be an even number between 6 and 40.')
 			)
 
 		if self.pk is not None:
@@ -130,7 +131,7 @@ class Match(models.Model):
 			).count()
 			if self.max_players is not None and self.max_players < confirmed_count:
 				errors['max_players'] = (
-					f'Maximum players cannot be less than {confirmed_count} confirmed participants.'
+					_('Maximum players cannot be less than %(count)s confirmed participants.') % {'count': confirmed_count}
 				)
 
 		if errors:
@@ -209,9 +210,9 @@ class Match(models.Model):
 
 
 class ParticipantStatus(models.TextChoices):
-	CONFIRMED = 'confirmed', 'Confirmed'
-	LEFT = 'left', 'Left'
-	WAITING = 'waiting', 'Waiting'
+	CONFIRMED = 'confirmed', _('Confirmed')
+	LEFT = 'left', _('Left')
+	WAITING = 'waiting', _('Waiting')
 
 
 class MatchParticipant(models.Model):
@@ -272,7 +273,7 @@ class MatchTeamAssignment(models.Model):
 			and self.participant.match_id != self.match_id
 		):
 			raise ValidationError(
-				'The participant must belong to the assigned match.'
+				_('The participant must belong to the assigned match.')
 			)
 
 	def __str__(self):
@@ -309,9 +310,9 @@ class MatchMessage(models.Model):
 
 
 class JoinRequestStatus(models.TextChoices):
-    PENDING = 'pending', 'Pending'
-    ACCEPTED = 'accepted', 'Accepted'
-    REJECTED = 'rejected', 'Rejected'
+    PENDING = 'pending', _('Pending')
+    ACCEPTED = 'accepted', _('Accepted')
+    REJECTED = 'rejected', _('Rejected')
 
 
 class JoinRequest(models.Model):
@@ -347,9 +348,9 @@ class JoinRequest(models.Model):
 
 
 class InvitationStatus(models.TextChoices):
-	PENDING = 'pending', 'Pending'
-	ACCEPTED = 'accepted', 'Accepted'
-	DECLINED = 'declined', 'Declined'
+	PENDING = 'pending', _('Pending')
+	ACCEPTED = 'accepted', _('Accepted')
+	DECLINED = 'declined', _('Declined')
 
 
 class Invitation(models.Model):
@@ -407,11 +408,11 @@ class PlayerRating(models.Model):
     def clean(self):
         from .services.calendar_services import can_rate_match
         if self.match_id and self.rater_id and not can_rate_match(self.match, self.rater):
-            raise ValidationError('Only participants of a completed match can rate players.')
+            raise ValidationError(_('Only participants of a completed match can rate players.'))
         if self.match_id and self.player_id and not self.match.participants.filter(
             player_id=self.player_id, status=ParticipantStatus.CONFIRMED,
         ).exists():
-            raise ValidationError('The rated player must be a confirmed participant.')
+            raise ValidationError(_('The rated player must be a confirmed participant.'))
 
     def save(self, *args, **kwargs):
         self.full_clean()

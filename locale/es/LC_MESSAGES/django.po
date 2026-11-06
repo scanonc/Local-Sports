@@ -1,0 +1,1164 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Local Sports\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: matches/forms.py:23
+msgid "Colombia time (America/Bogota)."
+msgstr "Hora de Colombia (America/Bogota)."
+
+#: matches/forms.py:56 matches/templates/matches/_match_chat.html:39
+msgid "Message"
+msgstr "Mensaje"
+
+#: matches/forms.py:45 matches/models.py:125
+msgid "Maximum number of players must be an even number between 6 and 40."
+msgstr "El número máximo de jugadores debe ser un número par entre 6 y 40."
+
+#: matches/forms.py:14
+msgid "Enter an even number between 6 and 40"
+msgstr "Ingresa un número par entre 6 y 40"
+
+#: matches/forms.py:63
+msgid "Write a message to the match thread..."
+msgstr "Escribe un mensaje en el chat del partido..."
+
+#: matches/models.py:10
+msgid "Beginner"
+msgstr "Principiante"
+
+#: matches/models.py:11
+msgid "Intermediate"
+msgstr "Intermedio"
+
+#: matches/models.py:12
+msgid "Advanced"
+msgstr "Avanzado"
+
+#: matches/models.py:16
+msgid "Public"
+msgstr "Público"
+
+#: matches/models.py:17
+msgid "Approval required"
+msgstr "Requiere aprobación"
+
+#: matches/models.py:21 matches/templates/matches/match_detail.html:122 matches/templates/matches/match_invite.html:39 matches/templates/matches/my_matches.html:23
+msgid "Active"
+msgstr "Activo"
+
+#: matches/models.py:22 matches/templates/matches/match_detail.html:120 matches/templates/matches/my_matches.html:21
+msgid "Closed"
+msgstr "Cerrado"
+
+#: matches/models.py:23 matches/templates/matches/match_detail.html:116 matches/templates/matches/match_history.html:21 matches/templates/matches/match_invite.html:33
+msgid "Cancelled"
+msgstr "Cancelado"
+
+#: matches/models.py:27 matches/templates/matches/_result_modal.html:26
+msgid "Team A won"
+msgstr "Ganó el equipo A"
+
+#: matches/models.py:28 matches/templates/matches/_result_modal.html:30
+msgid "Team B won"
+msgstr "Ganó el equipo B"
+
+#: matches/models.py:29 matches/templates/matches/_result_modal.html:34
+msgid "Draw"
+msgstr "Empate"
+
+#: matches/models.py:213
+msgid "Confirmed"
+msgstr "Confirmado"
+
+#: matches/models.py:214
+msgid "Left"
+msgstr "Salió"
+
+#: matches/models.py:215
+msgid "Waiting"
+msgstr "En espera"
+
+#: matches/models.py:313 matches/models.py:351 matches/templates/matches/_match_result.html:8
+msgid "Pending"
+msgstr "Pendiente"
+
+#: matches/models.py:314 matches/models.py:352
+msgid "Accepted"
+msgstr "Aceptada"
+
+#: matches/models.py:315
+msgid "Rejected"
+msgstr "Rechazada"
+
+#: matches/models.py:353
+msgid "Declined"
+msgstr "Declinada"
+
+#: matches/models.py:114
+msgid "Match date and time cannot be in the past."
+msgstr "La fecha y hora del partido no pueden estar en el pasado."
+
+#: matches/models.py:276
+msgid "The participant must belong to the assigned match."
+msgstr "El participante debe pertenecer al partido asignado."
+
+#: matches/models.py:411 matches/views.py:1259
+msgid "Only participants of a completed match can rate players."
+msgstr "Solo los participantes de un partido finalizado pueden calificar a los jugadores."
+
+#: matches/models.py:415
+msgid "The rated player must be a confirmed participant."
+msgstr "El jugador calificado debe ser un participante confirmado."
+
+#: matches/models.py:134
+#, python-format
+msgid "Maximum players cannot be less than %(count)s confirmed participants."
+msgstr "El máximo de jugadores no puede ser menor que %(count)s participantes confirmados."
+
+#: matches/result_services.py:20
+msgid "Select Team A, Team B or a draw."
+msgstr "Selecciona el equipo A, el equipo B o un empate."
+
+#: matches/result_services.py:26
+msgid "Cancelled matches cannot have a result."
+msgstr "Los partidos cancelados no pueden tener resultado."
+
+#: matches/result_services.py:30
+msgid "Teams must be generated before the result can be registered."
+msgstr "Los equipos deben generarse antes de poder registrar el resultado."
+
+#: matches/result_services.py:35
+msgid "The result can only be registered once the match has started."
+msgstr "El resultado solo se puede registrar una vez que el partido haya comenzado."
+
+#: matches/result_services.py:40
+msgid "The result of this match has already been registered."
+msgstr "El resultado de este partido ya fue registrado."
+
+#: matches/services/invitation_services.py:81 matches/views.py:594
+msgid "The invitation was accepted. You were added to the waiting list."
+msgstr "Aceptaste la invitación. Te agregamos a la lista de espera."
+
+#: matches/services/invitation_services.py:84 matches/views.py:597
+msgid "The invitation was accepted. You joined the match."
+msgstr "Aceptaste la invitación. Te uniste al partido."
+
+#: matches/services/invitation_services.py:52 matches/views.py:552
+msgid "The invitation has been declined."
+msgstr "La invitación fue rechazada."
+
+#: matches/services/invitation_services.py:55 matches/views.py:556
+msgid "This invitation action is not available."
+msgstr "Esta acción de la invitación no está disponible."
+
+#: matches/services/invitation_services.py:57 matches/views.py:300 matches/views.py:793 matches/views.py:900 matches/views.py:945 matches/views.py:1032 matches/views.py:478 matches/views.py:560 matches/views.py:818 matches/views.py:299 matches/views.py:1215
+msgid "This match has been cancelled."
+msgstr "Este partido fue cancelado."
+
+#: matches/services/invitation_services.py:59 matches/views.py:312 matches/views.py:808 matches/views.py:962 matches/views.py:384 matches/views.py:486 matches/views.py:568 matches/views.py:833 matches/views.py:1067 matches/views.py:311 matches/templates/matches/match_invite.html:93
+msgid "This match has already started or finished."
+msgstr "Este partido ya comenzó o terminó."
+
+#: matches/services/invitation_services.py:61 matches/views.py:789 matches/views.py:941 matches/templates/matches/match_invite.html:73
+msgid "You are the organizer of this match."
+msgstr "Eres el organizador de este partido."
+
+#: matches/services/invitation_services.py:63 matches/views.py:811 matches/views.py:966 matches/views.py:396 matches/views.py:489 matches/views.py:571
+msgid "Your skill level is not high enough for this match."
+msgstr "Tu nivel de habilidad no es suficiente para este partido."
+
+#: matches/services/invitation_services.py:72 matches/views.py:582
+msgid "You are already participating in this match."
+msgstr "Ya participas en este partido."
+
+#: matches/services/invitation_services.py:79 matches/views.py:591
+msgid "This match is full and cannot accept the invitation."
+msgstr "Este partido está lleno y no puede aceptar la invitación."
+
+#: matches/services/notification_services.py:125
+msgid "No confirmed participants to notify."
+msgstr "No hay participantes confirmados a quienes notificar."
+
+#: matches/services/notification_services.py:156
+#, python-format
+msgid "Notification sent to %(count)d confirmed participant(s): %(names)s."
+msgstr "Notificación enviada a %(count)d participante(s) confirmado(s): %(names)s."
+
+#: matches/team_services.py:42
+msgid "Team distribution requires an even number of at least 6 participants."
+msgstr "Para formar los equipos se necesita un número par de al menos 6 participantes."
+
+#: matches/team_services.py:47
+msgid "Teams have already been generated for this match."
+msgstr "Ya se generaron los equipos de este partido."
+
+#: matches/views.py:146 matches/views.py:1217
+msgid "Teams have already been generated."
+msgstr "Los equipos ya fueron generados."
+
+#: matches/views.py:772
+msgid "The match has been cancelled successfully."
+msgstr "El partido se canceló correctamente."
+
+#: matches/views.py:885
+msgid "You have joined the match."
+msgstr "Te uniste al partido."
+
+#: matches/views.py:930
+msgid "Your attendance has been confirmed."
+msgstr "Tu asistencia fue confirmada."
+
+#: matches/views.py:1011
+msgid "Your request to join the match has been sent."
+msgstr "Tu solicitud para unirte al partido fue enviada."
+
+#: matches/views.py:1106
+msgid "The join request has been accepted."
+msgstr "La solicitud de ingreso fue aceptada."
+
+#: matches/views.py:1136
+msgid "The join request has been rejected."
+msgstr "La solicitud de ingreso fue rechazada."
+
+#: matches/views.py:1228
+msgid "Teams have been generated successfully."
+msgstr "Los equipos se generaron correctamente."
+
+#: matches/views.py:150 matches/views.py:1220
+msgid "Teams can only be generated before the match starts."
+msgstr "Los equipos solo se pueden generar antes de que comience el partido."
+
+#: matches/views.py:294 matches/views.py:293
+msgid "Only the organizer can generate invitation links."
+msgstr "Solo el organizador puede generar enlaces de invitación."
+
+#: matches/views.py:306 matches/views.py:482 matches/views.py:564
+msgid "This match is closed and cannot accept invitations."
+msgstr "Este partido está cerrado y no puede aceptar invitaciones."
+
+#: matches/views.py:324
+#, python-format
+msgid "Shareable invitation link generated: %(url)s"
+msgstr "Enlace de invitación para compartir generado: %(url)s"
+
+#: matches/views.py:421 matches/templates/matches/match_invite.html:98
+msgid "This match is full and no longer admits participants."
+msgstr "Este partido está lleno y ya no admite participantes."
+
+#: matches/views.py:423
+msgid "This match is currently full. Accepting this invitation will place you on the waiting list."
+msgstr "Este partido está lleno por ahora. Si aceptas esta invitación, quedarás en la lista de espera."
+
+#: matches/views.py:440 matches/views.py:357
+msgid "This invitation link is invalid."
+msgstr "Este enlace de invitación no es válido."
+
+#: matches/views.py:444 matches/views.py:363
+msgid "This invitation link has been deactivated."
+msgstr "Este enlace de invitación fue desactivado."
+
+#: matches/views.py:466
+msgid "Only the organizer can invite players."
+msgstr "Solo el organizador puede invitar jugadores."
+
+#: matches/views.py:471
+msgid "Enter a username or email address to invite."
+msgstr "Ingresa el usuario o el correo de quien quieres invitar."
+
+#: matches/views.py:528
+#, python-format
+msgid "Invitation sent to %(player)s."
+msgstr "Invitación enviada a %(player)s."
+
+#: matches/views.py:627
+msgid "Only the organizer and confirmed participants can use the match chat."
+msgstr "Solo el organizador y los participantes confirmados pueden usar el chat del partido."
+
+#: matches/views.py:634
+msgid "This match has been cancelled, so its chat is read-only."
+msgstr "Este partido fue cancelado, así que su chat es de solo lectura."
+
+#: matches/views.py:648
+msgid "The message cannot be empty or longer than 500 characters."
+msgstr "El mensaje no puede estar vacío ni tener más de 500 caracteres."
+
+#: matches/views.py:719
+msgid "Cancelled matches cannot be edited."
+msgstr "Los partidos cancelados no se pueden editar."
+
+#: matches/views.py:722
+msgid "Closed matches cannot be edited."
+msgstr "Los partidos cerrados no se pueden editar."
+
+#: matches/views.py:761
+msgid "Only the organizer can cancel this match."
+msgstr "Solo el organizador puede cancelar este partido."
+
+#: matches/views.py:765
+msgid "This match is already cancelled."
+msgstr "Este partido ya está cancelado."
+
+#: matches/views.py:797 matches/views.py:377 matches/views.py:822
+msgid "This match is closed and cannot accept new participants."
+msgstr "Este partido está cerrado y no puede aceptar nuevos participantes."
+
+#: matches/views.py:803 matches/views.py:828
+msgid "This match requires the organizer's approval to join."
+msgstr "Para unirse a este partido se necesita la aprobación del organizador."
+
+#: matches/views.py:896
+msgid "The organizer cannot confirm attendance."
+msgstr "El organizador no puede confirmar su asistencia."
+
+#: matches/views.py:906
+msgid "Attendance cannot be confirmed after the match has started."
+msgstr "No se puede confirmar la asistencia después de que el partido haya comenzado."
+
+#: matches/views.py:924
+msgid "You have already confirmed attendance."
+msgstr "Ya confirmaste tu asistencia."
+
+#: matches/views.py:949 matches/views.py:1037 matches/views.py:1051
+msgid "This match is closed and cannot accept join requests."
+msgstr "Este partido está cerrado y no puede aceptar solicitudes de ingreso."
+
+#: matches/views.py:955
+msgid "This match does not require approval to join."
+msgstr "Para unirse a este partido no se necesita aprobación."
+
+#: matches/views.py:976 matches/views.py:842
+msgid "You already joined this match."
+msgstr "Ya te uniste a este partido."
+
+#: matches/views.py:988
+msgid "You already have a pending request for this match."
+msgstr "Ya tienes una solicitud pendiente para este partido."
+
+#: matches/views.py:1000
+msgid "This match is already full and cannot accept new requests."
+msgstr "Este partido ya está lleno y no puede aceptar nuevas solicitudes."
+
+#: matches/views.py:1025 matches/views.py:1046
+msgid "Only the organizer can accept join requests."
+msgstr "Solo el organizador puede aceptar solicitudes de ingreso."
+
+#: matches/views.py:1120
+msgid "Only the organizer can reject join requests."
+msgstr "Solo el organizador puede rechazar solicitudes de ingreso."
+
+#: matches/views.py:1188
+msgid "You have left the match."
+msgstr "Saliste del partido."
+
+#: matches/views.py:1190
+msgid "You have left the waiting list."
+msgstr "Saliste de la lista de espera."
+
+#: matches/views.py:1203
+msgid "Only the organizer can generate teams."
+msgstr "Solo el organizador puede generar los equipos."
+
+#: matches/views.py:1207
+msgid "Team generation requires confirmation."
+msgstr "Generar los equipos requiere confirmación."
+
+#: matches/views.py:1241
+msgid "Only the organizer can register the match result."
+msgstr "Solo el organizador puede registrar el resultado del partido."
+
+#: matches/views.py:1249
+msgid "Match result registered."
+msgstr "Resultado del partido registrado."
+
+#: matches/views.py:154
+msgid "At least 6 confirmed participants are required."
+msgstr "Se necesitan al menos 6 participantes confirmados."
+
+#: matches/views.py:370 matches/templates/matches/match_invite.html:88
+msgid "This match has been cancelled by the organizer."
+msgstr "Este partido fue cancelado por el organizador."
+
+#: matches/views.py:498
+msgid "This match is full and cannot accept invitations."
+msgstr "Este partido está lleno y no puede aceptar invitaciones."
+
+#: matches/views.py:518
+msgid "This player cannot be invited."
+msgstr "No se puede invitar a este jugador."
+
+#: matches/views.py:846
+msgid "You are already on the waiting list for this match."
+msgstr "Ya estás en la lista de espera de este partido."
+
+#: matches/views.py:919
+msgid "Only confirmed participants can confirm attendance."
+msgstr "Solo los participantes confirmados pueden confirmar su asistencia."
+
+#: matches/views.py:1078
+msgid "This match is already full and cannot accept more requests."
+msgstr "Este partido ya está lleno y no puede aceptar más solicitudes."
+
+#: matches/views.py:1161
+msgid "You are not currently part of this match."
+msgstr "Actualmente no participas en este partido."
+
+#: matches/views.py:1169
+msgid "You cannot leave a match that has already started or finished."
+msgstr "No puedes salir de un partido que ya comenzó o terminó."
+
+#: matches/views.py:1282
+msgid "Player rating saved."
+msgstr "Calificación guardada."
+
+#: matches/views.py:1298 matches/views.py:1323 matches/views.py:1272
+msgid "Select a rating from 1 to 5 stars."
+msgstr "Selecciona una calificación de 1 a 5 estrellas."
+
+#: matches/views.py:1321
+msgid "Player ratings saved."
+msgstr "Calificaciones guardadas."
+
+#: matches/views.py:158
+msgid "The number of confirmed participants must be even."
+msgstr "El número de participantes confirmados debe ser par."
+
+#: matches/views.py:305
+msgid "This match is closed."
+msgstr "Este partido está cerrado."
+
+#: matches/views.py:870
+#, python-format
+msgid "This match is full. You have been added to the waiting list (position %(position)s)."
+msgstr "Este partido está lleno. Te agregamos a la lista de espera (posición %(position)s)."
+
+#: matches/views.py:1061
+msgid "This join request is not available."
+msgstr "Esta solicitud de ingreso no está disponible."
+
+#: matches/views.py:1263
+msgid "You cannot rate yourself."
+msgstr "No puedes calificarte a ti mismo."
+
+#: matches/views.py:162
+msgid "Cancelled matches cannot generate teams."
+msgstr "Los partidos cancelados no pueden generar equipos."
+
+#: matches/views.py:1280
+msgid "The rating could not be saved."
+msgstr "No se pudo guardar la calificación."
+
+#: users/forms.py:27
+msgid "Optional details"
+msgstr "Detalles opcionales"
+
+#: users/models.py:81
+msgid "Did not show up"
+msgstr "No se presentó"
+
+#: users/models.py:82
+msgid "Unsportsmanlike conduct"
+msgstr "Conducta antideportiva"
+
+#: users/models.py:83
+msgid "Abusive language"
+msgstr "Lenguaje abusivo"
+
+#: users/models.py:84
+msgid "Other"
+msgstr "Otro"
+
+#: users/views.py:104
+msgid "You cannot favorite yourself."
+msgstr "No puedes agregarte a tus propios favoritos."
+
+#: users/views.py:141
+msgid "You cannot report yourself."
+msgstr "No puedes reportarte a ti mismo."
+
+#: users/views.py:157
+#, python-format
+msgid "Your report about %(player)s was submitted."
+msgstr "Tu reporte sobre %(player)s fue enviado."
+
+#: users/views.py:113
+#, python-format
+msgid "%(player)s was added to your favorites."
+msgstr "%(player)s fue agregado a tus favoritos."
+
+#: users/views.py:116
+#, python-format
+msgid "%(player)s was removed from your favorites."
+msgstr "%(player)s fue eliminado de tus favoritos."
+
+#: core/templates/core/base.html:34
+msgid "Less organizing, more playing."
+msgstr "Menos organizar, más jugar."
+
+#: core/templates/core/base.html:36
+msgid "Home"
+msgstr "Inicio"
+
+#: core/templates/core/base.html:37 matches/templates/matches/match_list.html:7
+msgid "Matches"
+msgstr "Partidos"
+
+#: core/templates/core/base.html:38 matches/templates/matches/match_form.html:9 matches/templates/matches/match_list.html:10 matches/templates/matches/my_matches.html:10
+msgid "Create match"
+msgstr "Crear partido"
+
+#: core/templates/core/base.html:40 matches/templates/matches/my_matches.html:7
+msgid "My matches"
+msgstr "Mis partidos"
+
+#: core/templates/core/base.html:42 users/templates/users/login.html:9 users/templates/users/login.html:23
+msgid "Login"
+msgstr "Iniciar sesión"
+
+#: core/templates/core/base.html:43 users/templates/users/signup.html:9
+msgid "Sign up"
+msgstr "Registrarse"
+
+#: core/templates/core/base.html:48
+msgid "Language"
+msgstr "Idioma"
+
+#: core/templates/core/base.html:60
+msgid "Admin"
+msgstr "Administración"
+
+#: core/templates/core/base.html:63
+msgid "Profile"
+msgstr "Perfil"
+
+#: core/templates/core/base.html:66 users/templates/users/notifications.html:7
+msgid "Notifications"
+msgstr "Notificaciones"
+
+#: core/templates/core/base.html:72 matches/templates/matches/match_history.html:7
+msgid "Match history"
+msgstr "Historial de partidos"
+
+#: core/templates/core/base.html:77
+msgid "Logout"
+msgstr "Cerrar sesión"
+
+#: core/templates/core/home.html:9
+msgid "Start organizing recreational football matches from a central place."
+msgstr "Empieza a organizar partidos de fútbol recreativos desde un solo lugar."
+
+#: core/templates/core/home.html:11
+msgid "Create a match"
+msgstr "Crear un partido"
+
+#: core/templates/core/home.html:12 matches/templates/matches/match_history.html:10 matches/templates/matches/match_invite.html:90 matches/templates/matches/match_invite.html:95 matches/templates/matches/match_invite.html:100
+msgid "Browse matches"
+msgstr "Ver partidos"
+
+#: matches/templates/matches/_match_chat.html:6
+msgid "Chat"
+msgstr "Chat"
+
+#: matches/templates/matches/_match_chat.html:17 matches/templates/matches/match_detail.html:140
+msgid "Organizer"
+msgstr "Organizador"
+
+#: matches/templates/matches/_match_chat.html:29
+msgid "No messages yet."
+msgstr "Aún no hay mensajes."
+
+#: matches/templates/matches/_match_chat.html:30
+msgid "Start the conversation!"
+msgstr "¡Empieza la conversación!"
+
+#: matches/templates/matches/_match_chat.html:35
+msgid "This match was cancelled, so the chat is read-only."
+msgstr "Este partido fue cancelado, así que el chat es de solo lectura."
+
+#: matches/templates/matches/_match_chat.html:42
+msgid "Send message"
+msgstr "Enviar mensaje"
+
+#: matches/templates/matches/_match_chat.html:20
+msgid "M j, H:i"
+msgstr "j M, H:i"
+
+#: matches/templates/matches/_match_ratings.html:5
+msgid "Rate players"
+msgstr "Calificar jugadores"
+
+#: matches/templates/matches/_match_ratings.html:6
+msgid "Rate the other participants from 1 to 5 stars. Saving again updates your rating."
+msgstr "Califica a los demás participantes de 1 a 5 estrellas. Si guardas de nuevo, se actualiza tu calificación."
+
+#: matches/templates/matches/_match_ratings.html:15 matches/templates/matches/_match_ratings.html:16
+msgid "5 stars"
+msgstr "5 estrellas"
+
+#: matches/templates/matches/_match_ratings.html:22 matches/templates/matches/_match_ratings.html:23
+msgid "4 stars"
+msgstr "4 estrellas"
+
+#: matches/templates/matches/_match_ratings.html:29 matches/templates/matches/_match_ratings.html:30
+msgid "3 stars"
+msgstr "3 estrellas"
+
+#: matches/templates/matches/_match_ratings.html:36 matches/templates/matches/_match_ratings.html:37
+msgid "2 stars"
+msgstr "2 estrellas"
+
+#: matches/templates/matches/_match_ratings.html:43 matches/templates/matches/_match_ratings.html:44
+msgid "1 star"
+msgstr "1 estrella"
+
+#: matches/templates/matches/_match_ratings.html:55
+msgid "Save ratings"
+msgstr "Guardar calificaciones"
+
+#: matches/templates/matches/_match_ratings.html:14
+#, python-format
+msgid "Rating for %(player)s"
+msgstr "Calificación para %(player)s"
+
+#: matches/templates/matches/_match_result.html:4 matches/templates/matches/_match_result.html:7 users/templates/users/player_profile.html:81
+msgid "Result"
+msgstr "Resultado"
+
+#: matches/templates/matches/_result_modal.html:15
+msgid "Register the match result"
+msgstr "Registra el resultado del partido"
+
+#: matches/templates/matches/_result_modal.html:22
+msgid "This match has finished. Who won?"
+msgstr "Este partido terminó. ¿Quién ganó?"
+
+#: matches/templates/matches/_result_modal.html:37
+msgid "The result cannot be changed once registered."
+msgstr "El resultado no se puede cambiar una vez registrado."
+
+#: matches/templates/matches/_result_modal.html:40
+msgid "Register result"
+msgstr "Registrar resultado"
+
+#: matches/templates/matches/match_detail.html:8 matches/templates/matches/match_detail.html:12 matches/templates/matches/match_invite.html:12
+msgid "Notice:"
+msgstr "Aviso:"
+
+#: matches/templates/matches/match_detail.html:8
+msgid "This match has been cancelled by the organizer. No further actions can be taken."
+msgstr "Este partido fue cancelado por el organizador. No se pueden realizar más acciones."
+
+#: matches/templates/matches/match_detail.html:12
+msgid "Teams have been generated. This match is closed and cannot accept new participants."
+msgstr "Los equipos ya fueron generados. Este partido está cerrado y no puede aceptar nuevos participantes."
+
+#: matches/templates/matches/match_detail.html:21
+msgid "Teams"
+msgstr "Equipos"
+
+#: matches/templates/matches/match_detail.html:24
+msgid "Participants"
+msgstr "Participantes"
+
+#: matches/templates/matches/match_detail.html:31
+msgid "Team A"
+msgstr "Equipo A"
+
+#: matches/templates/matches/match_detail.html:41 matches/templates/matches/match_detail.html:63 matches/templates/matches/match_detail.html:91
+msgid "Remove from favorites"
+msgstr "Quitar de favoritos"
+
+#: matches/templates/matches/match_detail.html:41 matches/templates/matches/match_detail.html:63 matches/templates/matches/match_detail.html:91
+msgid "Add to favorites"
+msgstr "Agregar a favoritos"
+
+#: matches/templates/matches/match_detail.html:45 matches/templates/matches/match_detail.html:67 matches/templates/matches/match_detail.html:95
+msgid "Report participant"
+msgstr "Reportar participante"
+
+#: matches/templates/matches/match_detail.html:53
+msgid "Team B"
+msgstr "Equipo B"
+
+#: matches/templates/matches/match_detail.html:83
+msgid "Attendance confirmed"
+msgstr "Asistencia confirmada"
+
+#: matches/templates/matches/match_detail.html:85
+msgid "Pending Confirmation"
+msgstr "Confirmación pendiente"
+
+#: matches/templates/matches/match_detail.html:102
+msgid "No confirmed participants yet."
+msgstr "Aún no hay participantes confirmados."
+
+#: matches/templates/matches/match_detail.html:110
+msgid "Match Info"
+msgstr "Información del partido"
+
+#: matches/templates/matches/match_detail.html:113
+msgid "Status"
+msgstr "Estado"
+
+#: matches/templates/matches/match_detail.html:118 matches/templates/matches/match_history.html:23
+msgid "Finished"
+msgstr "Finalizado"
+
+#: matches/templates/matches/match_detail.html:126 matches/templates/matches/match_form.html:19 matches/templates/matches/match_invite.html:45
+msgid "Date and time"
+msgstr "Fecha y hora"
+
+#: matches/templates/matches/match_detail.html:127 matches/templates/matches/match_form.html:25 matches/templates/matches/match_invite.html:48 matches/templates/matches/match_list.html:17
+msgid "Location"
+msgstr "Ubicación"
+
+#: matches/templates/matches/match_detail.html:128 matches/templates/matches/match_form.html:30 matches/templates/matches/match_invite.html:51 matches/templates/matches/match_list.html:21
+msgid "Skill level"
+msgstr "Nivel de habilidad"
+
+#: matches/templates/matches/match_detail.html:138 matches/templates/matches/match_form.html:35
+msgid "Maximum players"
+msgstr "Máximo de jugadores"
+
+#: matches/templates/matches/match_detail.html:139 matches/templates/matches/match_form.html:40 matches/templates/matches/match_invite.html:65
+msgid "Visibility"
+msgstr "Visibilidad"
+
+#: matches/templates/matches/match_detail.html:141
+msgid "Players joined"
+msgstr "Jugadores inscritos"
+
+#: matches/templates/matches/match_detail.html:142 matches/templates/matches/match_detail.html:314
+msgid "Waiting list"
+msgstr "Lista de espera"
+
+#: matches/templates/matches/match_detail.html:153
+msgid "Match Actions"
+msgstr "Acciones del partido"
+
+#: matches/templates/matches/match_detail.html:159
+msgid "Add to Google Calendar"
+msgstr "Agregar a Google Calendar"
+
+#: matches/templates/matches/match_detail.html:163
+msgid "This match is cancelled."
+msgstr "Este partido está cancelado."
+
+#: matches/templates/matches/match_detail.html:166 matches/templates/matches/match_form.html:9
+msgid "Edit match"
+msgstr "Editar partido"
+
+#: matches/templates/matches/match_detail.html:170
+msgid "Cancel match"
+msgstr "Cancelar partido"
+
+#: matches/templates/matches/match_detail.html:176
+msgid "Generate teams"
+msgstr "Generar equipos"
+
+#: matches/templates/matches/match_detail.html:176 matches/templates/matches/match_detail.html:179
+msgid "Matchmaking"
+msgstr "Matchmaking"
+
+#: matches/templates/matches/match_detail.html:183
+msgid "Invite players"
+msgstr "Invitar jugadores"
+
+#: matches/templates/matches/match_detail.html:186
+msgid "Username to invite"
+msgstr "Usuario a invitar"
+
+#: matches/templates/matches/match_detail.html:188
+msgid "Enter username"
+msgstr "Ingresa el usuario"
+
+#: matches/templates/matches/match_detail.html:189
+msgid "Send invitation"
+msgstr "Enviar invitación"
+
+#: matches/templates/matches/match_detail.html:197 matches/templates/matches/match_detail.html:202
+msgid "Generate shareable link"
+msgstr "Generar enlace para compartir"
+
+#: matches/templates/matches/match_detail.html:209 matches/templates/matches/match_detail.html:229
+msgid "Leave match"
+msgstr "Salir del partido"
+
+#: matches/templates/matches/match_detail.html:212
+msgid "This match is closed and does not accept new participants."
+msgstr "Este partido está cerrado y no acepta nuevos participantes."
+
+#: matches/templates/matches/match_detail.html:219 matches/templates/matches/match_invite.html:106
+msgid "Accept invitation"
+msgstr "Aceptar invitación"
+
+#: matches/templates/matches/match_detail.html:223
+msgid "Reject invitation"
+msgstr "Rechazar invitación"
+
+#: matches/templates/matches/match_detail.html:233
+msgid "Attendance confirmed."
+msgstr "Asistencia confirmada."
+
+#: matches/templates/matches/match_detail.html:237
+msgid "Confirm attendance"
+msgstr "Confirmar asistencia"
+
+#: matches/templates/matches/match_detail.html:244
+msgid "Leave waiting list"
+msgstr "Salir de la lista de espera"
+
+#: matches/templates/matches/match_detail.html:247
+msgid "This match has already started."
+msgstr "Este partido ya comenzó."
+
+#: matches/templates/matches/match_detail.html:251
+msgid "Join waiting list"
+msgstr "Unirse a la lista de espera"
+
+#: matches/templates/matches/match_detail.html:256
+msgid "Join match"
+msgstr "Unirse al partido"
+
+#: matches/templates/matches/match_detail.html:259
+msgid "This match is full."
+msgstr "Este partido está lleno."
+
+#: matches/templates/matches/match_detail.html:261
+msgid "Your request is pending organizer approval."
+msgstr "Tu solicitud está pendiente de aprobación del organizador."
+
+#: matches/templates/matches/match_detail.html:265
+msgid "Request to join"
+msgstr "Solicitar unirse"
+
+#: matches/templates/matches/match_detail.html:269
+msgid "Login to join"
+msgstr "Inicia sesión para unirte"
+
+#: matches/templates/matches/match_detail.html:278
+msgid "Shareable invitation link"
+msgstr "Enlace de invitación para compartir"
+
+#: matches/templates/matches/match_detail.html:281
+msgid "Copied!"
+msgstr "¡Copiado!"
+
+#: matches/templates/matches/match_detail.html:281
+msgid "Copy link"
+msgstr "Copiar enlace"
+
+#: matches/templates/matches/match_detail.html:285
+msgid "Regenerate link"
+msgstr "Regenerar enlace"
+
+#: matches/templates/matches/match_detail.html:293
+msgid "Join requests"
+msgstr "Solicitudes de ingreso"
+
+#: matches/templates/matches/match_detail.html:300
+msgid "Accept"
+msgstr "Aceptar"
+
+#: matches/templates/matches/match_detail.html:303
+msgid "Reject"
+msgstr "Rechazar"
+
+#: matches/templates/matches/match_detail.html:216
+#, python-format
+msgid "You were invited by %(organizer)s."
+msgstr "%(organizer)s te invitó."
+
+#: matches/templates/matches/match_detail.html:241
+#, python-format
+msgid "You are #%(position)s on the waiting list."
+msgstr "Eres el n.º %(position)s en la lista de espera."
+
+#: matches/templates/matches/match_detail.html:297
+#, python-format
+msgid "Requested on %(date)s"
+msgstr "Solicitado el %(date)s"
+
+#: matches/templates/matches/match_form.html:14
+msgid "Title"
+msgstr "Título"
+
+#: matches/templates/matches/match_form.html:44
+msgid "Save match"
+msgstr "Guardar partido"
+
+#: matches/templates/matches/match_history.html:8
+msgid "Matches you organized or joined that have already ended or were cancelled."
+msgstr "Partidos que organizaste o a los que te uniste y que ya terminaron o fueron cancelados."
+
+#: matches/templates/matches/match_history.html:27 matches/templates/matches/match_list.html:59 matches/templates/matches/my_matches.html:27
+msgid "Location:"
+msgstr "Ubicación:"
+
+#: matches/templates/matches/match_history.html:28
+msgid "Organizer:"
+msgstr "Organizador:"
+
+#: matches/templates/matches/match_history.html:29 matches/templates/matches/match_list.html:62 matches/templates/matches/my_matches.html:30
+msgid "View details"
+msgstr "Ver detalles"
+
+#: matches/templates/matches/match_history.html:36
+msgid "You do not have any matches in your history yet."
+msgstr "Aún no tienes partidos en tu historial."
+
+#: matches/templates/matches/match_invite.html:16
+msgid "Browse other matches"
+msgstr "Ver otros partidos"
+
+#: matches/templates/matches/match_invite.html:27
+msgid "Match Invitation"
+msgstr "Invitación a un partido"
+
+#: matches/templates/matches/match_invite.html:35
+msgid "Finished/Started"
+msgstr "Finalizado/Iniciado"
+
+#: matches/templates/matches/match_invite.html:37
+msgid "Full"
+msgstr "Lleno"
+
+#: matches/templates/matches/match_invite.html:62
+msgid "Players"
+msgstr "Jugadores"
+
+#: matches/templates/matches/match_invite.html:75 matches/templates/matches/match_invite.html:80 matches/templates/matches/match_invite.html:85
+msgid "View match details"
+msgstr "Ver detalles del partido"
+
+#: matches/templates/matches/match_invite.html:78
+msgid "You have already joined this match as a confirmed participant."
+msgstr "Ya te uniste a este partido como participante confirmado."
+
+#: matches/templates/matches/match_invite.html:83
+msgid "You are currently on the waiting list for this match."
+msgstr "Estás en la lista de espera de este partido."
+
+#: matches/templates/matches/match_invite.html:111
+msgid "Decline invitation"
+msgstr "Declinar invitación"
+
+#: matches/templates/matches/match_invite.html:29
+#, python-format
+msgid "Organized by %(organizer)s"
+msgstr "Organizado por %(organizer)s"
+
+#: matches/templates/matches/match_invite.html:63
+#, python-format
+msgid "%(count)s / %(max)s confirmed"
+msgstr "%(count)s / %(max)s confirmados"
+
+#: matches/templates/matches/match_list.html:8
+msgid "Browse and search the football matches currently available."
+msgstr "Explora y busca los partidos de fútbol disponibles."
+
+#: matches/templates/matches/match_list.html:18
+msgid "Search location..."
+msgstr "Buscar ubicación..."
+
+#: matches/templates/matches/match_list.html:23
+msgid "All skill levels"
+msgstr "Todos los niveles"
+
+#: matches/templates/matches/match_list.html:30
+msgid "From date"
+msgstr "Desde la fecha"
+
+#: matches/templates/matches/match_list.html:34
+msgid "Filter"
+msgstr "Filtrar"
+
+#: matches/templates/matches/match_list.html:36 matches/templates/matches/match_list.html:69
+msgid "Clear filters"
+msgstr "Borrar filtros"
+
+#: matches/templates/matches/match_list.html:36
+msgid "Clear"
+msgstr "Borrar"
+
+#: matches/templates/matches/match_list.html:60 matches/templates/matches/my_matches.html:28
+msgid "Players:"
+msgstr "Jugadores:"
+
+#: matches/templates/matches/match_list.html:61 matches/templates/matches/my_matches.html:29
+msgid "Visibility:"
+msgstr "Visibilidad:"
+
+#: matches/templates/matches/match_list.html:69
+msgid "No matches found matching your filter criteria."
+msgstr "No se encontraron partidos con esos filtros."
+
+#: matches/templates/matches/match_list.html:71
+msgid "No matches have been created yet."
+msgstr "Aún no se ha creado ningún partido."
+
+#: matches/templates/matches/my_matches.html:8
+msgid "Upcoming matches you organized or joined."
+msgstr "Próximos partidos que organizaste o a los que te uniste."
+
+#: matches/templates/matches/my_matches.html:36
+msgid "You do not have any upcoming matches yet."
+msgstr "Aún no tienes próximos partidos."
+
+#: users/templates/users/favorites.html:7
+msgid "My favorite players"
+msgstr "Mis jugadores favoritos"
+
+#: users/templates/users/favorites.html:17
+msgid "Remove"
+msgstr "Quitar"
+
+#: users/templates/users/favorites.html:23
+msgid "You haven't added any favorite players yet."
+msgstr "Aún no has agregado jugadores favoritos."
+
+#: users/templates/users/login.html:14 users/templates/users/signup.html:15
+msgid "Username"
+msgstr "Usuario"
+
+#: users/templates/users/login.html:19 users/templates/users/signup.html:40
+msgid "Password"
+msgstr "Contraseña"
+
+#: users/templates/users/notifications.html:19
+msgid "New"
+msgstr "Nueva"
+
+#: users/templates/users/notifications.html:26
+msgid "You have no notifications."
+msgstr "No tienes notificaciones."
+
+#: users/templates/users/notifications.html:16
+msgid "d M Y, H:i"
+msgstr "j M Y, H:i"
+
+#: users/templates/users/player_profile.html:19
+msgid "Average Rating"
+msgstr "Calificación promedio"
+
+#: users/templates/users/player_profile.html:31
+msgid "No ratings"
+msgstr "Sin calificaciones"
+
+#: users/templates/users/player_profile.html:35
+msgid "Skill Level"
+msgstr "Nivel de habilidad"
+
+#: users/templates/users/player_profile.html:43
+msgid "Player Statistics"
+msgstr "Estadísticas del jugador"
+
+#: users/templates/users/player_profile.html:47
+msgid "Matches Played"
+msgstr "Partidos jugados"
+
+#: users/templates/users/player_profile.html:52
+msgid "Won"
+msgstr "Ganados"
+
+#: users/templates/users/player_profile.html:57
+msgid "Drawn"
+msgstr "Empatados"
+
+#: users/templates/users/player_profile.html:62
+msgid "Lost"
+msgstr "Perdidos"
+
+#: users/templates/users/player_profile.html:72
+msgid "Recent Matches"
+msgstr "Partidos recientes"
+
+#: users/templates/users/player_profile.html:79
+msgid "Date"
+msgstr "Fecha"
+
+#: users/templates/users/player_profile.html:80
+msgid "Match"
+msgstr "Partido"
+
+#: users/templates/users/player_profile.html:89
+msgctxt "result of one match"
+msgid "Won"
+msgstr "Ganó"
+
+#: users/templates/users/player_profile.html:89
+msgctxt "result of one match"
+msgid "Drawn"
+msgstr "Empató"
+
+#: users/templates/users/player_profile.html:89
+msgctxt "result of one match"
+msgid "Lost"
+msgstr "Perdió"
+
+#: users/templates/users/player_profile.html:96
+msgid "No completed matches with a registered result."
+msgstr "No hay partidos finalizados con resultado registrado."
+
+#: users/templates/users/player_profile.html:87
+msgid "M j, Y"
+msgstr "j M Y"
+
+#: users/templates/users/player_profile.html:23
+#, python-format
+msgid "%(rating)s out of 5 stars"
+msgstr "%(rating)s de 5 estrellas"
+
+#: users/templates/users/player_profile.html:29
+#, python-format
+msgid "(%(counter)s rating)"
+msgid_plural "(%(counter)s ratings)"
+msgstr[0] "(%(counter)s calificación)"
+msgstr[1] "(%(counter)s calificaciones)"
+
+#: users/templates/users/report_form.html:14
+msgid "Reason"
+msgstr "Motivo"
+
+#: users/templates/users/report_form.html:22
+msgid "Details (optional)"
+msgstr "Detalles (opcional)"
+
+#: users/templates/users/report_form.html:26
+msgid "Submit report"
+msgstr "Enviar reporte"
+
+#: users/templates/users/report_form.html:7
+#, python-format
+msgid "Report %(user)s"
+msgstr "Reportar a %(user)s"
+
+#: users/templates/users/signup.html:20
+msgid "Email"
+msgstr "Correo electrónico"
+
+#: users/templates/users/signup.html:25
+msgid "First name"
+msgstr "Nombre"
+
+#: users/templates/users/signup.html:30
+msgid "Last name"
+msgstr "Apellido"
+
+#: users/templates/users/signup.html:35
+msgid "Profile picture URL"
+msgstr "URL de la foto de perfil"
+
+#: users/templates/users/signup.html:45
+msgid "Confirm password"
+msgstr "Confirmar contraseña"
+
+#: users/templates/users/signup.html:50
+msgid "Create account"
+msgstr "Crear cuenta"
