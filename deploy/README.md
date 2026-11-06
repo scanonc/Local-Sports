@@ -17,7 +17,10 @@ Django 6 needs Python 3.12 or newer, which is what Ubuntu 24.04 ships. Do not pi
 3. AMI: **Ubuntu Server 24.04 LTS**. Instance type: **t3.micro** (or t2.micro).
 4. Key pair: `vockey` (Learner Lab) or create one.
 5. Network settings > create a security group with:
-   - SSH (22) from **My IP**
+   - SSH (22) from **Anywhere-IPv4 (0.0.0.0/0)**. The browser-based EC2 Instance Connect of step 2 connects
+     from AWS's own address range, not from your IP, so **My IP** makes it fail. Access still needs the
+     temporary key that Instance Connect pushes, so this is acceptable for a course lab. If you prefer a
+     narrower rule, use the Instance Connect range of us-east-1, `18.206.107.24/29`.
    - HTTP (80) from **Anywhere (0.0.0.0/0)**
 6. Storage: 8 to 16 GiB. Launch.
 7. EC2 > Elastic IPs > Allocate Elastic IP address > Associate it with the instance.
@@ -112,6 +115,7 @@ sudo systemctl restart local-sports
 
 | Symptom | What to check |
 |---|---|
+| EC2 Instance Connect says "Failed to connect to your instance" | The security group must allow SSH (22) from `0.0.0.0/0` or `18.206.107.24/29`, not only from My IP; the instance must be Running |
 | Browser cannot connect | Security group has HTTP 80 open; instance is Running; you used the Elastic IP |
 | 502 Bad Gateway | gunicorn is not running: `sudo systemctl status local-sports` and `sudo journalctl -u local-sports -n 50` |
 | 400 Bad Request | The address in the URL is not in `DJANGO_ALLOWED_HOSTS` in `.env`; fix it and `sudo systemctl restart local-sports` |
