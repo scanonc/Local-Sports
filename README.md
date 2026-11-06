@@ -43,13 +43,21 @@ may also need to be the email address associated with that Resend account.
 
 ## Dependencies
 
-`requirements.txt` only pins Django itself; `asgiref`, `sqlparse` and `tzdata` are internal dependencies that Django installs automatically (see the comments in `requirements.txt` for what each one is used for). We don't add any other third-party package - Bootstrap is loaded via CDN in the base template, not installed with pip.
+`requirements.txt` lists the libraries the project needs (Django's own internal dependencies, such as `asgiref`, `sqlparse` and `tzdata`, are installed automatically):
 
-If a new dependency is ever added, regenerate the file from inside the activated `venv` so it only reflects this project's packages:
+| Library | Purpose |
+|---|---|
+| Django | Web framework |
+| python-dotenv | Loads the settings of the `.env` file |
+| resend | Sends the email notifications |
+| gunicorn | Production web server (used in the AWS deployment) |
 
-```bash
-pip install <package>
-pip freeze > requirements.txt
-```
+Bootstrap and the fonts are loaded from a CDN in the base template, so they are not installed with pip.
+
+If a new library is needed, install it inside the activated `venv` and add its name to `requirements.txt`.
 
 `venv/` is excluded from version control via `.gitignore` - it is never pushed to GitHub, since anyone can recreate it locally from `requirements.txt`.
+
+## Deployment (AWS EC2)
+
+The production setup (Ubuntu 24.04 on EC2, nginx, gunicorn and SQLite) and its step-by-step instructions are in [`deploy/README.md`](deploy/README.md). In production the settings are read from the `.env` file (`DJANGO_DEBUG`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`); for local development none of them is needed.
