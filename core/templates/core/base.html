@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-{% load static %}
-<html lang="en">
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,17 +31,25 @@
                 </svg>
                 <span>LOCAL <span class="navbar-brand-accent">SPORTS</span></span>
             </a>
-            <span class="navbar-slogan d-none d-md-inline me-auto">Less organizing, more playing.</span>
+            <span class="navbar-slogan d-none d-md-inline me-auto">{% trans "Less organizing, more playing." %}</span>
             <div class="navbar-nav ms-auto align-items-center gap-2">
-                <a class="nav-link" href="/">Home</a>
-                <a class="nav-link" href="/matches/">Matches</a>
-                <a class="nav-link" href="/matches/create/">Create match</a>
+                <a class="nav-link" href="/">{% trans "Home" %}</a>
+                <a class="nav-link" href="/matches/">{% trans "Matches" %}</a>
+                <a class="nav-link" href="/matches/create/">{% trans "Create match" %}</a>
                 {% if user.is_authenticated %}
-                <a class="nav-link" href="{% url 'matches:my_matches' %}">My matches</a>
+                <a class="nav-link" href="{% url 'matches:my_matches' %}">{% trans "My matches" %}</a>
                 {% else %}
-                <a class="nav-link" href="{% url 'users:login' %}?next={{ request.path }}">Login</a>
-                <a class="nav-link" href="{% url 'users:signup' %}">Sign up</a>
+                <a class="nav-link" href="{% url 'users:login' %}?next={{ request.path }}">{% trans "Login" %}</a>
+                <a class="nav-link" href="{% url 'users:signup' %}">{% trans "Sign up" %}</a>
                 {% endif %}
+                <form method="post" action="{% url 'set_language' %}" class="language-toggle" id="language-toggle">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="{% trans 'Language' %}">
+                        <button type="submit" name="language" value="en" class="btn {% if LANGUAGE_CODE == 'en' %}btn-light{% else %}btn-outline-light{% endif %}" aria-pressed="{% if LANGUAGE_CODE == 'en' %}true{% else %}false{% endif %}" title="English">EN</button>
+                        <button type="submit" name="language" value="es" class="btn {% if LANGUAGE_CODE == 'es' %}btn-light{% else %}btn-outline-light{% endif %}" aria-pressed="{% if LANGUAGE_CODE == 'es' %}true{% else %}false{% endif %}" title="Español">ES</button>
+                    </div>
+                </form>
                 {% if user.is_authenticated %}
                 <div class="dropdown">
                     <button class="navbar-avatar navbar-avatar-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ user.get_full_name|default:user.username }}">
@@ -48,24 +57,24 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end navbar-account-menu">
                         {% if user.is_staff or user.is_superuser %}
-                        <li><a class="dropdown-item" href="/admin/"><i class="bi bi-shield-lock-fill me-2" aria-hidden="true"></i>Admin</a></li>
+                        <li><a class="dropdown-item" href="/admin/"><i class="bi bi-shield-lock-fill me-2" aria-hidden="true"></i>{% trans "Admin" %}</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% endif %}
-                        <li><a class="dropdown-item" href="{% url 'users:player_profile' user.pk %}"><i class="bi bi-person-fill me-2" aria-hidden="true"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="{% url 'users:player_profile' user.pk %}"><i class="bi bi-person-fill me-2" aria-hidden="true"></i>{% trans "Profile" %}</a></li>
                         <li>
                             <a class="dropdown-item position-relative" href="{% url 'users:notifications' %}">
-                                <i class="bi bi-bell-fill me-2" aria-hidden="true"></i>Notifications
+                                <i class="bi bi-bell-fill me-2" aria-hidden="true"></i>{% trans "Notifications" %}
                                 {% if unread_notifications_count %}
                                 <span class="badge rounded-pill bg-danger ms-1">{{ unread_notifications_count }}</span>
                                 {% endif %}
                             </a>
                         </li>
-                        <li><a class="dropdown-item" href="{% url 'matches:match_history' %}"><i class="bi bi-clock-history me-2" aria-hidden="true"></i>Match history</a></li>
+                        <li><a class="dropdown-item" href="{% url 'matches:match_history' %}"><i class="bi bi-clock-history me-2" aria-hidden="true"></i>{% trans "Match history" %}</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form method="post" action="/users/logout/">
                                 {% csrf_token %}
-                                <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Logout</button>
+                                <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>{% trans "Logout" %}</button>
                             </form>
                         </li>
                     </ul>

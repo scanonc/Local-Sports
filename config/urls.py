@@ -23,5 +23,6 @@ urlpatterns = [
     path('', core_views.home, name='home'),
     path('users/', include('users.urls')),
     path('matches/', include('matches.urls')),
+    path('i18n/', include('django.conf.urls.i18n')),
     path('admin/', admin.site.urls),
 ]

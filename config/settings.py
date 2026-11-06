@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'core.middleware.CookieLocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -111,7 +112,18 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
+
+# The language is chosen with the EN / ES button of the navbar (see
+# core.middleware.CookieLocaleMiddleware). English is the default.
+LANGUAGES = [
+    ('en', 'English'),
+    ('es', 'Español'),
+]
+
+# The compiled Spanish catalog (django.mo) is committed, so gettext is not
+# needed to run the project. See locale/README.md to update the translations.
+LOCALE_PATHS = [BASE_DIR / 'locale']
 
 TIME_ZONE = 'America/Bogota'
 
