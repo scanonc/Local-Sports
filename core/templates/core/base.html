@@ -61,6 +61,7 @@
                         <li><hr class="dropdown-divider"></li>
                         {% endif %}
                         <li><a class="dropdown-item" href="{% url 'users:player_profile' user.pk %}"><i class="bi bi-person-fill me-2" aria-hidden="true"></i>{% trans "Profile" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'users:favorites' %}"><i class="bi bi-star-fill me-2" aria-hidden="true"></i>{% trans "Favorites" %}</a></li>
                         <li>
                             <a class="dropdown-item position-relative" href="{% url 'users:notifications' %}">
                                 <i class="bi bi-bell-fill me-2" aria-hidden="true"></i>{% trans "Notifications" %}

@@ -1162,3 +1162,15 @@ msgstr "Confirmar contraseña"
 #: users/templates/users/signup.html:50
 msgid "Create account"
 msgstr "Crear cuenta"
+
+#: core/templates/core/base.html:64
+msgid "Favorites"
+msgstr "Favoritos"
+
+#: users/templates/users/player_profile.html:114
+msgid "Favorite players"
+msgstr "Jugadores favoritos"
+
+#: users/templates/users/player_profile.html:136
+msgid "Use the star next to a player in a match to add them here."
+msgstr "Usa la estrella junto a un jugador en un partido para agregarlo aquí."
