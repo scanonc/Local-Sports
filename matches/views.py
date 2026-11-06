@@ -713,6 +713,11 @@ class MatchUpdateView(LoginRequiredMixin, UpdateView):
         return Match.objects.filter(organizer=self.request.user)
 
     def dispatch(self, request, *args, **kwargs):
+        # This override runs before LoginRequiredMixin.dispatch(), so the login
+        # check must happen here or get_queryset() receives an AnonymousUser.
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+
         obj = self.get_object()
         if obj.status == MatchStatus.CANCELLED:
             messages.error(request, 'Cancelled matches cannot be edited.')
