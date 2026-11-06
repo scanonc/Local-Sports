@@ -10,7 +10,7 @@
             <div class="list-group">
                 {% for favorite in favorites %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>{{ favorite.favorite }}</span>
+                        <a href="{% url 'users:player_profile' favorite.favorite.pk %}">{{ favorite.favorite }}</a>
                         <form method="post" action="{% url 'users:favorite_toggle' favorite.favorite.pk %}">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="{% url 'users:favorites' %}">

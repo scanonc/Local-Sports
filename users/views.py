@@ -54,6 +54,17 @@ class PlayerProfileView(LoginRequiredMixin, DetailView):
 		context['skill_level'] = calculate_player_skill_level(self.object)
 		context['skill_level_label'] = MatchSkillLevel(context['skill_level']).label
 		context['recent_matches'] = get_recent_matches(self.object)
+		context['is_own_profile'] = self.object.pk == self.request.user.pk
+		if context['is_own_profile']:
+			# FR17 - the favorites list is personal: only its owner sees it.
+			context['favorite_players'] = [
+				entry.favorite
+				for entry in FavoritePlayer.objects.filter(user=self.request.user).select_related('favorite')
+			]
+		else:
+			context['is_favorite'] = FavoritePlayer.objects.filter(
+				user=self.request.user, favorite=self.object,
+			).exists()
 		return context
 
 

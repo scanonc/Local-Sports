@@ -14,6 +14,16 @@
         <div class="profile-identity">
             <h1>{{ player.get_full_name|default:player.username }}</h1>
             <p>@{{ player.username }}</p>
+            {% if not is_own_profile %}
+            <form method="post" action="{% url 'users:favorite_toggle' player.pk %}" class="profile-favorite-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" class="profile-favorite-button{% if is_favorite %} is-favorite{% endif %}" aria-pressed="{% if is_favorite %}true{% else %}false{% endif %}">
+                    <i class="bi {% if is_favorite %}bi-star-fill{% else %}bi-star{% endif %}" aria-hidden="true"></i>
+                    {% if is_favorite %}{% trans "Remove from favorites" %}{% else %}{% trans "Add to favorites" %}{% endif %}
+                </button>
+            </form>
+            {% endif %}
         </div>
         <div class="profile-rating">
             <h2>{% trans "Average Rating" %}</h2>
@@ -96,5 +106,36 @@
         <p class="profile-empty-state">{% trans "No completed matches with a registered result." %}</p>
         {% endif %}
     </section>
+
+    {% if is_own_profile %}
+    <section class="profile-card" id="favorite-players">
+        <div class="profile-section-heading">
+            <i class="bi bi-star-fill" aria-hidden="true"></i>
+            <h2>{% trans "Favorite players" %}</h2>
+        </div>
+        {% if favorite_players %}
+        <ul class="profile-favorites-list">
+            {% for favorite_player in favorite_players %}
+            <li>
+                <a class="profile-favorite-name" href="{% url 'users:player_profile' favorite_player.pk %}">
+                    <span class="profile-favorite-avatar">{{ favorite_player.initials }}</span>
+                    <span>
+                        <strong>{{ favorite_player.get_full_name|default:favorite_player.username }}</strong>
+                        <small>@{{ favorite_player.username }}</small>
+                    </span>
+                </a>
+                <form method="post" action="{% url 'users:favorite_toggle' favorite_player.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">{% trans "Remove" %}</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="profile-empty-state">{% trans "You haven't added any favorite players yet." %} {% trans "Use the star next to a player in a match to add them here." %}</p>
+        {% endif %}
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
