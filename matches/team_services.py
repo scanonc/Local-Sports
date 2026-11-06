@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils.translation import gettext as _
 from .models import (
 	Match,
 	MatchStatus,
@@ -38,12 +39,12 @@ def distribute_match_teams(match):
 
 		if len(participants) < 6 or len(participants) % 2:
 			raise TeamDistributionError(
-				'Team distribution requires an even number of at least 6 participants.'
+				_('Team distribution requires an even number of at least 6 participants.')
 			)
 
 		if MatchTeamAssignment.objects.filter(match=match).exists():
 			raise TeamDistributionError(
-				'Teams have already been generated for this match.'
+				_('Teams have already been generated for this match.')
 			)
 
 		participants.sort(

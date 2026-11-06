@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from .models import Match, MatchMessage
 
@@ -10,7 +11,7 @@ class MatchForm(forms.ModelForm):
         widget=forms.NumberInput(
             attrs={
                 'class': 'form-control',
-                'placeholder': 'Enter an even number between 6 and 40',
+                'placeholder': _('Enter an even number between 6 and 40'),
                 'min': 6,
                 'max': 40,
                 'step': 2,
@@ -19,7 +20,7 @@ class MatchForm(forms.ModelForm):
     )
 
     date_time = forms.DateTimeField(
-        help_text='Colombia time (America/Bogota).',
+        help_text=_('Colombia time (America/Bogota).'),
         widget=forms.DateTimeInput(
             attrs={'type': 'datetime-local', 'class': 'form-control'},
             format='%Y-%m-%dT%H:%M',
@@ -41,7 +42,7 @@ class MatchForm(forms.ModelForm):
         max_players = self.cleaned_data['max_players']
         if max_players % 2 != 0:
             raise forms.ValidationError(
-                'Maximum number of players must be an even number between 6 and 40.'
+                _('Maximum number of players must be an even number between 6 and 40.')
             )
         return max_players
 
@@ -52,14 +53,14 @@ class MatchMessageForm(forms.ModelForm):
     class Meta:
         model = MatchMessage
         fields = ['content']
-        labels = {'content': 'Message'}
+        labels = {'content': _('Message')}
         widgets = {
             'content': forms.Textarea(
                 attrs={
                     'class': 'form-control',
                     'rows': 2,
                     'maxlength': MatchMessage.MAX_LENGTH,
-                    'placeholder': 'Write a message to the match thread...',
+                    'placeholder': _('Write a message to the match thread...'),
                 }
             ),
         }

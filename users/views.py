@@ -6,9 +6,11 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView
+from django.utils.translation import gettext as _
 
 from .forms import ReportForm, SignUpForm
 from .models import FavoritePlayer, Notification, Report
+from matches.models import MatchSkillLevel
 from matches.services.player_statistics import (
 	calculate_player_skill_level,
 	calculate_player_statistics,
@@ -50,6 +52,7 @@ class PlayerProfileView(LoginRequiredMixin, DetailView):
 		context['average_rating_display'] = rounded_average_rating(statistics)
 		context['rating_stars'] = int(context['average_rating_display'] or 0)
 		context['skill_level'] = calculate_player_skill_level(self.object)
+		context['skill_level_label'] = MatchSkillLevel(context['skill_level']).label
 		context['recent_matches'] = get_recent_matches(self.object)
 		return context
 
@@ -98,7 +101,7 @@ class FavoritePlayerToggleView(LoginRequiredMixin, View):
 		next_url = request.POST.get('next') or 'users:favorites'
 
 		if target_player.pk == request.user.pk:
-			messages.error(request, 'You cannot favorite yourself.')
+			messages.error(request, _('You cannot favorite yourself.'))
 			return redirect(next_url)
 
 		favorite, created = FavoritePlayer.objects.get_or_create(
@@ -107,10 +110,10 @@ class FavoritePlayerToggleView(LoginRequiredMixin, View):
 		)
 
 		if created:
-			messages.success(request, f'{target_player} was added to your favorites.')
+			messages.success(request, _('%(player)s was added to your favorites.') % {'player': target_player})
 		else:
 			favorite.delete()
-			messages.success(request, f'{target_player} was removed from your favorites.')
+			messages.success(request, _('%(player)s was removed from your favorites.') % {'player': target_player})
 
 		return redirect(next_url)
 
@@ -135,7 +138,7 @@ class ReportUserView(LoginRequiredMixin, CreateView):
 		self.reported_user = get_object_or_404(User, pk=kwargs['pk'])
 
 		if self.reported_user.pk == request.user.pk:
-			messages.error(request, 'You cannot report yourself.')
+			messages.error(request, _('You cannot report yourself.'))
 			return redirect('home')
 
 		return super().dispatch(request, *args, **kwargs)
@@ -149,7 +152,10 @@ class ReportUserView(LoginRequiredMixin, CreateView):
 		form.instance.reporter = self.request.user
 		form.instance.reported_user = self.reported_user
 		response = super().form_valid(form)
-		messages.success(self.request, f'Your report about {self.reported_user} was submitted.')
+		messages.success(
+			self.request,
+			_('Your report about %(player)s was submitted.') % {'player': self.reported_user},
+		)
 		return response
 
 	def get_success_url(self):

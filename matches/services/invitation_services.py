@@ -2,6 +2,7 @@ import uuid
 
 from django.db import transaction
 from django.urls import reverse
+from django.utils.translation import gettext as _
 
 from ..models import (
     Invitation,
@@ -48,18 +49,18 @@ def process_link_invitation(match, user, action):
                     player=user,
                     status=InvitationStatus.DECLINED,
                 )
-            return True, 'The invitation has been declined.', None
+            return True, _('The invitation has been declined.'), None
 
         if action != 'accept':
-            return False, 'This invitation action is not available.', None
+            return False, _('This invitation action is not available.'), None
         if match.status == MatchStatus.CANCELLED:
-            return False, 'This match has been cancelled.', None
+            return False, _('This match has been cancelled.'), None
         if match.has_started:
-            return False, 'This match has already started or finished.', None
+            return False, _('This match has already started or finished.'), None
         if match.organizer_id == user.id:
-            return False, 'You are the organizer of this match.', None
+            return False, _('You are the organizer of this match.'), None
         if not player_meets_match_skill_level(user, match):
-            return False, 'Your skill level is not high enough for this match.', None
+            return False, _('Your skill level is not high enough for this match.'), None
 
         participant = MatchParticipant.objects.filter(
             match=match, player=user,
@@ -68,19 +69,19 @@ def process_link_invitation(match, user, action):
             ParticipantStatus.CONFIRMED,
             ParticipantStatus.WAITING,
         ]:
-            return False, 'You are already participating in this match.', participant
+            return False, _('You are already participating in this match.'), participant
 
         confirmed_count = MatchParticipant.objects.filter(
             match=match, status=ParticipantStatus.CONFIRMED,
         ).count()
         if confirmed_count >= match.max_players:
             if match.visibility != MatchVisibility.PUBLIC:
-                return False, 'This match is full and cannot accept the invitation.', None
+                return False, _('This match is full and cannot accept the invitation.'), None
             participant_status = ParticipantStatus.WAITING
-            message = 'The invitation was accepted. You were added to the waiting list.'
+            message = _('The invitation was accepted. You were added to the waiting list.')
         else:
             participant_status = ParticipantStatus.CONFIRMED
-            message = 'The invitation was accepted. You joined the match.'
+            message = _('The invitation was accepted. You joined the match.')
 
         if participant:
             participant.status = participant_status
