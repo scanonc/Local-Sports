@@ -34,6 +34,10 @@ python manage.py runserver
 
 Then open `http://127.0.0.1:8000/` in the browser.
 
+## Languages (EN / ES)
+
+The navbar has an **EN | ES** button. English is the default; the choice is stored in a cookie (the browser language is ignored on purpose). Translations live in `locale/es/` and the compiled `django.mo` is committed, so nothing extra has to be installed. See [`locale/README.md`](locale/README.md) to add or update texts.
+
 ## Email notifications
 
 Match update and cancellation emails are sent through Resend. Copy `.env.example`
