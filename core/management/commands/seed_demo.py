@@ -1,69 +1,102 @@
-"""Seed demo data for the Sprint Review (like a Laravel seeder).
+"""Demo data for the Sprint Review (a "seeder", like in Laravel).
 
-    python manage.py seed_demo             # create the demo users and matches
-    python manage.py seed_demo --reset     # delete the demo data and create it again
-    python manage.py seed_demo --clear     # delete the demo data only
+    python manage.py seed_demo            # local machine (DEBUG on)
+    python manage.py seed_demo --force    # server (DEBUG off)
 
-Only the demo data is touched: the users ``organizer`` and ``player1`` ..
-``player10`` and the matches whose title starts with ``[Demo]``. Any other
-user (for example a superuser) or match is left alone.
+WARNING: the command DELETES ALL THE DATA of the database (``flush``) and
+fills it again with the same demo data every time. That includes superusers:
+create one again with ``createsuperuser`` if you need the admin panel.
+
+Nothing here sends emails: everything is created directly with the ORM.
 """
+import uuid
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.contrib.auth.hashers import make_password
+from django.core.management import call_command
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.test import RequestFactory
 from django.utils import timezone
 
+from matches.context_processors import pending_match_result
 from matches.models import (
 	Invitation,
 	JoinRequest,
+	JoinRequestStatus,
 	Match,
 	MatchMessage,
 	MatchParticipant,
 	MatchResult,
 	MatchSkillLevel,
+	MatchStatus,
+	MatchTeam,
 	MatchTeamAssignment,
 	MatchVisibility,
 	ParticipantStatus,
 	PlayerRating,
 )
-from matches.result_services import register_match_result
+from matches.services.player_statistics import (
+	calculate_player_skill_level,
+	calculate_player_statistics,
+	player_meets_match_skill_level,
+)
 from matches.team_services import distribute_match_teams
-from users.models import FavoritePlayer, Notification
+from users.models import FavoritePlayer, Notification, Report, ReportReason
 
 User = get_user_model()
 
 DEFAULT_PASSWORD = 'prueba123'
-ORGANIZER_USERNAME = 'organizer'
-PLAYER_COUNT = 10
-DEMO_PREFIX = '[Demo] '
+PLAYERS = range(1, 11)
 
-# Stars that player1..player6 receive in the finished match. Every other
-# participant gives the same stars to a player, so the average is exact:
-# 5.0 and 5.0 -> Advanced, 4.0 and 4.0 -> Intermediate, 3.0 and 2.0 -> Beginner.
-RATING_BY_PLAYER = {1: 5, 2: 5, 3: 4, 4: 4, 5: 3, 6: 2}
+PLAYER_NAMES = {
+	1: ('Santiago', 'Ramírez'), 2: ('Camila', 'Torres'), 3: ('Andrés', 'Molina'),
+	4: ('Valentina', 'Ríos'), 5: ('Mateo', 'Herrera'), 6: ('Daniela', 'Cárdenas'),
+	7: ('Sebastián', 'Ospina'), 8: ('Mariana', 'Londoño'), 9: ('Felipe', 'Zapata'),
+	10: ('Isabela', 'Restrepo'),
+}
+
+# Average stars that each player receives in the history matches (thresholds in
+# matches/services/player_statistics.py: <= 3.0 Beginner, <= 4.0 Intermediate,
+# > 4.0 Advanced, and fewer than 3 ratings is always Beginner). player10 gets none.
+RATING_TARGETS = {1: 4.8, 2: 4.6, 3: 4.4, 4: 3.8, 5: 3.6, 6: 3.4, 7: 3.2, 8: 2.6, 9: 2.0}
+EXPECTED_LEVEL = {
+	**{n: MatchSkillLevel.ADVANCED for n in (1, 2, 3)},
+	**{n: MatchSkillLevel.INTERMEDIATE for n in (4, 5, 6, 7)},
+	**{n: MatchSkillLevel.BEGINNER for n in (8, 9, 10)},
+}
+
+# Past matches: players of team A (the other players are team B) and the result.
+# Different teams and results make the profile statistics differ.
+HISTORY = [
+	# key, days ago, title, location, level, team A, result
+	('A1', 30, 'Pichanga de los viernes', 'Cancha sintética EAFIT',
+	 MatchSkillLevel.INTERMEDIATE, {1, 3, 5, 7, 9}, MatchResult.TEAM_A),
+	('A2', 22, 'Partido de integración UPB', 'Cancha UPB, Laureles',
+	 MatchSkillLevel.BEGINNER, {1, 2, 4, 6, 8}, MatchResult.TEAM_A),
+	('A3', 15, 'Fútbol 5 en Belén', 'Unidad Deportiva de Belén',
+	 MatchSkillLevel.INTERMEDIATE, {1, 3, 6, 9, 10}, MatchResult.TEAM_A),
+	('A4', 8, 'Clásico del barrio', 'Cancha sintética El Poblado',
+	 MatchSkillLevel.BEGINNER, {2, 5, 7, 9, 10}, MatchResult.DRAW),
+	('A5', 3, 'Mundialito de la U', 'Cancha sintética EAFIT',
+	 MatchSkillLevel.INTERMEDIATE, {2, 4, 5, 8, 9}, MatchResult.TEAM_B),
+]
+LIVE_RATING_TEAM_A = {1, 2, 5, 6, 9}  # scenario I: ended yesterday, result team A
 
 
-def demo_usernames():
-	return [ORGANIZER_USERNAME] + [f'player{n}' for n in range(1, PLAYER_COUNT + 1)]
-
-
-def _next_hour(moment):
-	return (moment + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+def local_at(moment, hour):
+	return timezone.localtime(moment).replace(hour=hour, minute=0, second=0, microsecond=0)
 
 
 class Command(BaseCommand):
-	help = 'Create (or remove) demo users and matches for the Sprint Review.'
+	help = 'DELETE ALL DATA and load the demo data of the Sprint Review.'
 
 	def add_arguments(self, parser):
 		parser.add_argument(
-			'--reset', action='store_true',
-			help='Delete the demo data and create it again.',
-		)
-		parser.add_argument(
-			'--clear', action='store_true',
-			help='Delete the demo data and stop (use it after the demo).',
+			'--force', action='store_true',
+			help='Required when DEBUG is False (for example on the AWS server).',
 		)
 		parser.add_argument(
 			'--password', default=DEFAULT_PASSWORD,
@@ -71,163 +104,364 @@ class Command(BaseCommand):
 		)
 
 	def handle(self, *args, **options):
-		if options['reset'] or options['clear']:
-			self.clear_demo_data()
-			if options['clear']:
-				return
+		if not settings.DEBUG and not options['force']:
+			raise CommandError(
+				'This command deletes ALL the data of the database and DEBUG is False. '
+				'Run it again with --force if you are sure.'
+			)
 
+		self.now = timezone.now()
+		self.password_hash = make_password(options['password'])
+		self.password = options['password']
+		self.scenarios = []  # (letter, match, requirement)
+
+		# One transaction for everything: if something fails, the flush is undone too.
 		with transaction.atomic():
-			users = self.create_users(options['password'])
-			self.create_matches(users)
+			call_command('flush', interactive=False, verbosity=0)
+			self.create_users()
+			self.create_history()
+			self.create_live_rating_match()
+			self.create_pending_result_match()
+			self.create_ready_for_teams_match()
+			self.create_full_match_with_waiting_list()
+			self.create_approval_match()
+			self.create_open_match()
+			self.create_advanced_match()
+			self.create_cancelled_match()
+			self.create_calendar_match()
+			self.create_extras()
+			checks = self.verify()
 
-		self.stdout.write(self.style.SUCCESS(
-			'Demo data ready. Log in as organizer or player1 .. player10 '
-			f"(password: {options['password']})."
-		))
+		self.print_report(checks)
 
 	# ------------------------------------------------------------------ users
 
-	def create_users(self, password):
-		users = {}
-		for username in demo_usernames():
-			user, created = User.objects.get_or_create(
-				username=username,
-				defaults={'email': f'{username}@example.com'},
-			)
-			# Always set the password, so the demo logins work even if the
-			# command is run again.
-			user.set_password(password)
-			user.save(update_fields=['password'])
-			users[username] = user
-			self.stdout.write(f"  user {username}: {'created' if created else 'updated'}")
-		return users
-
-	# ---------------------------------------------------------------- matches
-
-	def create_matches(self, users):
-		organizer = users[ORGANIZER_USERNAME]
-		players = {n: users[f'player{n}'] for n in range(1, PLAYER_COUNT + 1)}
-		now = timezone.now()
-
-		self.finished_match(organizer, players, now)
-		self.started_match(organizer, players, now)
-		self.open_match(organizer, players, now)
-		self.private_match(organizer, players, now)
-		self.advanced_match(organizer, players, now)
-		self.create_favorites(players)
-
-	def _new_match(self, organizer, title, *, days_ahead, skill_level=MatchSkillLevel.BEGINNER,
-	               visibility=MatchVisibility.PUBLIC, location='EAFIT', max_players=6):
-		"""Create a match, or return None when it already exists."""
-		title = DEMO_PREFIX + title
-		if Match.objects.filter(organizer=organizer, title=title).exists():
-			self.stdout.write(f'  match "{title}": already exists, skipped')
-			return None
-		# Match.save() validates the date, so every match starts in the future
-		# and the past ones are moved back later (see _move_to_past).
-		date_time = _next_hour(timezone.now() + timedelta(days=days_ahead))
-		match = Match.objects.create(
-			organizer=organizer, title=title, date_time=date_time, location=location,
-			skill_level=skill_level, max_players=max_players, visibility=visibility,
+	def create_users(self):
+		self.organizer = User.objects.create(
+			username='organizer', email='organizer@gmail.com', password=self.password_hash,
+			first_name='Laura', last_name='Gómez',
 		)
-		self.stdout.write(f'  match "{title}": created')
+		self.p = {}
+		for n in PLAYERS:
+			first, last = PLAYER_NAMES[n]
+			self.p[n] = User.objects.create(
+				username=f'player{n}', email=f'Player{n}@gmail.com', password=self.password_hash,
+				first_name=first, last_name=last,
+			)
+		self.number = {user.pk: n for n, user in self.p.items()}
+
+	# ---------------------------------------------------------------- helpers
+
+	def new_match(self, title, date_time, *, location, skill_level=MatchSkillLevel.BEGINNER,
+	              max_players=10, visibility=MatchVisibility.PUBLIC, status=MatchStatus.ACTIVE,
+	              result='', invite_token=None):
+		"""Create a match. Match.save() validates the date, so a past match is created
+		with a future placeholder date and moved to the past with QuerySet.update()."""
+		is_past = date_time < self.now
+		match = Match.objects.create(
+			organizer=self.organizer, title=title, location=location, skill_level=skill_level,
+			max_players=max_players, visibility=visibility, status=status, result=result,
+			invite_token=invite_token, invite_active=True,
+			date_time=self.now + timedelta(days=1) if is_past else date_time,
+		)
+		if is_past:
+			changes = {'date_time': date_time}
+			if result:
+				changes['result_registered_at'] = date_time + timedelta(hours=2)
+			Match.objects.filter(pk=match.pk).update(**changes)
+			match.refresh_from_db()
 		return match
 
 	@staticmethod
-	def _move_to_past(match, moment):
-		# QuerySet.update() skips Match.save(), which refuses past dates.
-		Match.objects.filter(pk=match.pk).update(date_time=moment)
+	def join(match, numbers, players, *, status=ParticipantStatus.CONFIRMED, attended=False):
+		return [
+			MatchParticipant.objects.create(
+				match=match, player=players[n], status=status, attendance_confirmed=attended,
+			)
+			for n in numbers
+		]
+
+	def assign_teams(self, match, participants, team_a_numbers):
+		MatchTeamAssignment.objects.bulk_create([
+			MatchTeamAssignment(
+				match=match, participant=participant,
+				team=MatchTeam.A if self.number[participant.player_id] in team_a_numbers else MatchTeam.B,
+			)
+			for participant in participants
+		])
+
+	def say(self, match, author, content, minutes_ago):
+		message = MatchMessage.objects.create(match=match, author=author, content=content)
+		MatchMessage.objects.filter(pk=message.pk).update(
+			created_at=self.now - timedelta(minutes=minutes_ago),
+		)
+
+	def finished_match(self, title, date_time, *, location, skill_level, team_a, result):
+		match = self.new_match(
+			title, date_time, location=location, skill_level=skill_level,
+			status=MatchStatus.CLOSED, result=result,
+		)
+		participants = self.join(match, PLAYERS, self.p, attended=True)
+		self.assign_teams(match, participants, team_a)
+		return match
+
+	# --------------------------------------------------------------- scenarios
+
+	def create_history(self):
+		"""A) Five past matches with teams, results and ratings."""
+		history = []
+		for key, days, title, location, level, team_a, result in HISTORY:
+			match = self.finished_match(
+				title, local_at(self.now - timedelta(days=days), 19),
+				location=location, skill_level=level, team_a=team_a, result=result,
+			)
+			history.append(match)
+			self.scenarios.append((key, match, 'Historial y estadísticas del perfil (FR13, FR23)'))
+		self.create_ratings(history)
+
+	def create_ratings(self, matches):
+		"""Ratings whose averages give the levels of EXPECTED_LEVEL (nobody rates player10)."""
+		counters = {n: 0 for n in RATING_TARGETS}
+		rows = []
+		for match in matches:
+			for rated, target in RATING_TARGETS.items():
+				for rater in PLAYERS:
+					if rater == rated:
+						continue
+					k = counters[rated]
+					# Whole stars whose running average is `target`.
+					stars = int(target * (k + 1) + 0.5) - int(target * k + 0.5)
+					counters[rated] += 1
+					rows.append(PlayerRating(
+						match=match, rater=self.p[rater], player=self.p[rated], stars=stars,
+					))
+		PlayerRating.objects.bulk_create(rows)
+
+	def create_live_rating_match(self):
+		"""I) Ended yesterday, result registered, no ratings: rate live as player1 or player2."""
+		match = self.finished_match(
+			'Partido de ayer en La 70', local_at(self.now - timedelta(days=1), 20),
+			location='Cancha La 70, Laureles', skill_level=MatchSkillLevel.BEGINNER,
+			team_a=LIVE_RATING_TEAM_A, result=MatchResult.TEAM_A,
+		)
+		self.live_match = match
+		self.scenarios.append(('I', match, 'Calificar jugadores en vivo (FR21)'))
+
+	def create_pending_result_match(self):
+		"""B) Started a few hours ago, teams generated, no result: the organizer sees the pop-up."""
+		match = self.new_match(
+			'Fútbol 5 de la tarde', self.now + timedelta(days=1), location='Cancha sintética EAFIT',
+			skill_level=MatchSkillLevel.INTERMEDIATE,
+		)
+		self.join(match, PLAYERS, self.p, attended=True)
+		# Teams from the real service (pattern A, B, B, A, A, B, B, A by average rating),
+		# generated while the match is still in the future, as in the application.
+		distribute_match_teams(match)
+		Match.objects.filter(pk=match.pk).update(date_time=self.now - timedelta(hours=3))
 		match.refresh_from_db()
+		self.say(match, self.organizer, 'Equipos listos, nos vemos en la cancha.', 200)
+		self.say(match, self.p[3], 'Voy llegando, guarden puesto.', 190)
+		self.pending_match = match
+		self.scenarios.append(('B', match, 'Pop-up de resultado pendiente (FR20)'))
 
-	@staticmethod
-	def _join(match, player, *, status=ParticipantStatus.CONFIRMED, attended=False):
-		return MatchParticipant.objects.create(
-			match=match, player=player, status=status, attendance_confirmed=attended,
+	def create_ready_for_teams_match(self):
+		"""C) Active, in two days, exactly 10 confirmed, no teams yet: generate teams live."""
+		match = self.new_match(
+			'Pichanga del sábado', local_at(self.now + timedelta(days=2), 18),
+			location='Cancha sintética El Poblado', max_players=10,
 		)
+		participants = self.join(match, PLAYERS, self.p)
+		for participant in participants[:6]:
+			MatchParticipant.objects.filter(pk=participant.pk).update(attendance_confirmed=True)
+		self.ready_match = match
+		self.scenarios.append(('C', match, 'Generar equipos balanceados (FR24), asistencia (FR7)'))
 
-	def finished_match(self, organizer, players, now):
-		"""A past match with teams, result and ratings: profiles get statistics."""
-		match = self._new_match(organizer, 'Finished match (result and ratings)', days_ahead=1,
-		                        location='UPB')
-		if match is None:
-			return
-		for n in range(1, 7):
-			self._join(match, players[n], attended=True)
-		distribute_match_teams(match)
-		self._move_to_past(match, now - timedelta(days=3))
-		register_match_result(match, MatchResult.TEAM_A)
-		for rated_n, stars in RATING_BY_PLAYER.items():
-			for rater_n in range(1, 7):
-				if rater_n != rated_n:
-					PlayerRating.objects.create(
-						match=match, rater=players[rater_n], player=players[rated_n], stars=stars,
-					)
-		MatchMessage.objects.create(match=match, author=players[1], content='Good game, everyone!')
+	def create_full_match_with_waiting_list(self):
+		"""D) Full match (6/6) with two players on the waiting list."""
+		match = self.new_match(
+			'Torneo relámpago', local_at(self.now + timedelta(days=3), 17),
+			location='Unidad Deportiva de Belén', max_players=6,
+		)
+		self.join(match, range(1, 7), self.p)
+		self.join(match, (7, 8), self.p, status=ParticipantStatus.WAITING)
+		self.full_match = match
+		self.scenarios.append(('D', match, 'Lista de espera y reemplazo automático (FR10, FR11)'))
 
-	def started_match(self, organizer, players, now):
-		"""A match that already started, with teams and no result yet.
+	def create_approval_match(self):
+		"""E) Approval required, two pending requests."""
+		match = self.new_match(
+			'Partido privado de amigos', local_at(self.now + timedelta(days=2), 20),
+			location='Cancha UdeA', visibility=MatchVisibility.APPROVAL_REQUIRED,
+		)
+		self.join(match, (4, 5), self.p)
+		for n in (8, 9):
+			JoinRequest.objects.create(match=match, player=self.p[n], request_status=JoinRequestStatus.PENDING)
+		self.scenarios.append(('E', match, 'Aprobar o rechazar solicitudes (FR4)'))
 
-		The organizer is asked for the result (FR20) as soon as they log in.
-		Teams use the ratings of the finished match (FR24).
-		"""
-		match = self._new_match(organizer, 'Started match (register the result)', days_ahead=1,
-		                        location='EAFIT')
-		if match is None:
-			return
-		for n in range(1, 7):
-			self._join(match, players[n], attended=True)
-		distribute_match_teams(match)
-		self._move_to_past(match, now - timedelta(hours=1))
-		MatchMessage.objects.create(match=match, author=organizer, content='Teams are ready, see you on the field.')
-		MatchMessage.objects.create(match=match, author=players[2], content='On my way!')
-		MatchMessage.objects.create(match=match, author=players[4], content='Who brings the balls?')
+	def create_open_match(self):
+		"""F) Open match to join, with chat and a shareable link."""
+		match = self.new_match(
+			'Pichanga abierta del domingo', local_at(self.now + timedelta(days=5), 10),
+			location='Parque Lineal La Presidenta', max_players=10,
+			invite_token=uuid.uuid5(uuid.NAMESPACE_URL, 'local-sports-demo-open-match'),
+		)
+		self.join(match, (2, 3, 4, 5), self.p)
+		self.say(match, self.organizer, '¡Bienvenidos! Faltan 6 jugadores, inviten a sus amigos.', 300)
+		self.say(match, self.p[2], 'Yo llevo los petos.', 240)
+		self.say(match, self.p[3], '¿Se puede llegar en bus hasta la cancha?', 180)
+		self.say(match, self.organizer, 'Sí, la ruta de Laureles pasa a dos cuadras.', 150)
+		self.say(match, self.p[4], 'Perfecto, ahí nos vemos.', 90)
+		self.say(match, self.p[5], 'Confirmo asistencia.', 30)
+		self.open_match = match
+		self.scenarios.append(('F', match, 'Unirse (FR5), chat (FR22), enlace de invitación (FR16)'))
 
-	def open_match(self, organizer, players, now):
-		"""A public match with one free spot: join, waiting list and replacement."""
-		match = self._new_match(organizer, 'Open match (join and waiting list)', days_ahead=1,
-		                        location='Parque Lleras')
-		if match is None:
-			return
-		for n in range(1, 6):
-			self._join(match, players[n])
-		# player9 has a pending invitation (FR15).
-		Invitation.objects.create(match=match, organizer=organizer, player=players[9])
+	def create_advanced_match(self):
+		"""G) Advanced level: players of a lower level cannot join."""
+		match = self.new_match(
+			'Liga élite de la U', local_at(self.now + timedelta(days=4), 19),
+			location='Estadio Atanasio Girardot', skill_level=MatchSkillLevel.ADVANCED,
+		)
+		self.join(match, (1, 2, 3), self.p)
+		self.advanced_match = match
+		self.scenarios.append(('G', match, 'Nivel requerido (FR23.1): player8 o player9 no pueden unirse'))
+
+	def create_cancelled_match(self):
+		"""H) Cancelled match with participants and a read-only chat."""
+		match = self.new_match(
+			'Partido cancelado por lluvia', local_at(self.now + timedelta(days=3), 16),
+			location='Cancha sintética EAFIT', status=MatchStatus.CANCELLED,
+		)
+		self.join(match, (1, 3, 5, 6, 7), self.p)
+		self.say(match, self.p[5], '¿Sigue en pie con esta lluvia?', 600)
+		self.say(match, self.organizer, 'Lo cancelo: la cancha está inundada.', 560)
+		self.say(match, self.p[1], 'Entendido, avisen cuando lo reprogramen.', 520)
+		self.cancelled_match = match
+		self.scenarios.append(('H', match, 'Cancelación y chat de solo lectura (FR9, FR22)'))
+
+	def create_calendar_match(self):
+		"""J) Upcoming match where player1 is confirmed: Add to Google Calendar."""
+		match = self.new_match(
+			'Fútbol 7 de integración', local_at(self.now + timedelta(days=4), 8),
+			location='Cancha sintética EAFIT', max_players=10,
+		)
+		self.join(match, (1, 4, 6, 7), self.p)
+		self.calendar_match = match
+		self.scenarios.append(('J', match, 'Agregar a Google Calendar (FR19)'))
+
+	# ----------------------------------------------------------------- extras
+
+	def create_extras(self):
+		for user, favorite in ((1, 2), (1, 3), (2, 1)):
+			FavoritePlayer.objects.create(user=self.p[user], favorite=self.p[favorite])
+		Report.objects.create(
+			reporter=self.p[3], reported_user=self.p[9], reason=ReportReason.NO_SHOW,
+			details='No se presentó al partido del viernes y no avisó a nadie.',
+		)
+		for match in (self.open_match, self.calendar_match):
+			Invitation.objects.create(match=match, organizer=self.organizer, player=self.p[10])
+			Notification.objects.create(
+				user=self.p[10], match=match,
+				message=f'You have been invited by {self.organizer} to the match "{match.title}".',
+			)
 		Notification.objects.create(
-			user=players[9], match=match,
-			message=f'You have been invited by {organizer} to the match "{match.title}".',
+			user=self.p[1], match=self.calendar_match,
+			message=f"The match '{self.calendar_match.title}' has been updated.",
+		)
+		Notification.objects.create(
+			user=self.p[1], match=self.cancelled_match,
+			message=f"The match '{self.cancelled_match.title}' has been cancelled.",
+		)
+		Notification.objects.create(
+			user=self.p[1], match=self.advanced_match,
+			message=f"The match '{self.advanced_match.title}' has been updated.",
 		)
 
-	def private_match(self, organizer, players, now):
-		"""A match that needs approval, with one pending request (FR4)."""
-		match = self._new_match(organizer, 'Private match (approval required)', days_ahead=2,
-		                        visibility=MatchVisibility.APPROVAL_REQUIRED, location='UdeA')
-		if match is None:
-			return
-		JoinRequest.objects.create(match=match, player=players[8])
+	# ----------------------------------------------------------- verification
 
-	def advanced_match(self, organizer, players, now):
-		"""An Advanced match: only players with an Advanced level can join (FR23.1)."""
-		match = self._new_match(organizer, 'Advanced match (level required)', days_ahead=3,
-		                        skill_level=MatchSkillLevel.ADVANCED, location='Atanasio Girardot')
-		if match is None:
-			return
-		self._join(match, players[1])
-		self._join(match, players[2])
+	def verify(self):
+		"""Check the demo against the real rules of the code. Any failure undoes everything."""
+		checks = []
 
-	@staticmethod
-	def create_favorites(players):
-		for favorite in (2, 3):
-			FavoritePlayer.objects.get_or_create(user=players[1], favorite=players[favorite])
+		def check(label, condition):
+			checks.append((label, bool(condition)))
+			if not condition:
+				raise CommandError(f'Verification failed: {label}')
 
-	# ------------------------------------------------------------------ clear
+		request = RequestFactory().get('/')
+		request.user = self.organizer
+		check('B: the organizer gets the pending result pop-up (FR20)',
+		      pending_match_result(request)['pending_result_match'] == self.pending_match)
+		check('B: result empty, closed, teams generated, already started',
+		      self.pending_match.awaiting_result and self.pending_match.has_generated_teams)
+		check('C: FR24 conditions (active, future, 10 confirmed, no teams)',
+		      self.ready_match.status == MatchStatus.ACTIVE and not self.ready_match.has_started
+		      and self.ready_match.confirmed_participants_count == 10
+		      and not self.ready_match.has_generated_teams)
+		check('D: full with 2 waiting',
+		      self.full_match.is_full and self.full_match.waiting_list_count == 2)
+		check('F: invite link active', self.open_match.invite_token and self.open_match.invite_active)
+		check('I: no ratings in the live rating match',
+		      not PlayerRating.objects.filter(match=self.live_match).exists())
+		check('player10 has no ratings', not PlayerRating.objects.filter(player=self.p[10]).exists())
+		for n in PLAYERS:
+			check(f'player{n} level is {EXPECTED_LEVEL[n].label}',
+			      calculate_player_skill_level(self.p[n]) == EXPECTED_LEVEL[n])
+		check('G: player1 can join the advanced match, player8 cannot',
+		      player_meets_match_skill_level(self.p[1], self.advanced_match)
+		      and not player_meets_match_skill_level(self.p[8], self.advanced_match))
+		return checks
 
-	def clear_demo_data(self):
-		"""Delete only the demo matches and the demo users (and what they own)."""
-		demo_users = User.objects.filter(username__in=demo_usernames())
-		matches = Match.objects.filter(organizer__in=demo_users, title__startswith=DEMO_PREFIX)
-		match_count = matches.count()
-		matches.delete()
-		user_count = demo_users.count()
-		# Deleting a user also deletes what that user created or joined.
-		demo_users.delete()
-		self.stdout.write(f'Removed {match_count} demo matches and {user_count} demo users.')
+	# ----------------------------------------------------------------- output
+
+	def table(self, headers, rows):
+		widths = [max(len(str(row[i])) for row in [headers] + rows) for i in range(len(headers))]
+		line = '  '.join(str(h).ljust(w) for h, w in zip(headers, widths))
+		self.stdout.write(line)
+		self.stdout.write('  '.join('-' * w for w in widths))
+		for row in rows:
+			self.stdout.write('  '.join(str(c).ljust(w) for c, w in zip(row, widths)))
+
+	def print_report(self, checks):
+		out = self.stdout.write
+		out(self.style.SUCCESS('\nDemo data loaded (the database was flushed first).'))
+
+		out(self.style.MIGRATE_HEADING('\n1. Users'))
+		users = [self.organizer] + [self.p[n] for n in PLAYERS]
+		self.table(('username', 'email', 'password'), [(u.username, u.email, self.password) for u in users])
+		out('There is no superuser: run "python manage.py createsuperuser" if you need /admin/.')
+
+		out(self.style.MIGRATE_HEADING('\n2. Scenarios'))
+		rows = []
+		for key, match, requirement in self.scenarios:
+			rows.append((key, match.pk, match.title, timezone.localtime(match.date_time).strftime('%Y-%m-%d %H:%M'),
+			             match.get_status_display(), requirement))
+		self.table(('', 'id', 'title', 'date (Colombia)', 'status', 'demonstrates'), rows)
+
+		out(self.style.MIGRATE_HEADING('\n3. Player levels (calculated with the real rules)'))
+		rows = []
+		for n in PLAYERS:
+			stats = calculate_player_statistics(self.p[n])
+			average = f'{stats.average_rating:.1f}' if stats.average_rating is not None else '-'
+			rows.append((
+				f'player{n}', calculate_player_skill_level(self.p[n]).label, average, stats.rating_count,
+				f'{stats.matches_played}/{stats.matches_won}/{stats.matches_drawn}/{stats.matches_lost}',
+			))
+		self.table(('player', 'level', 'avg stars', 'ratings', 'played/won/drawn/lost'), rows)
+
+		out(self.style.MIGRATE_HEADING('\n4. Who logs in for each requirement'))
+		guide = [
+			('organizer', 'Pop-up de resultado pendiente (FR20): partido B "%s"' % self.pending_match.title),
+			('organizer', 'Generate teams (FR24): partido C "%s" (id %s)' % (self.ready_match.title, self.ready_match.pk)),
+			('organizer', 'Aprobar solicitudes de player8 y player9 (FR4): partido E; compartir enlace (FR16): partido F'),
+			('player1 o player2', 'Calificar jugadores en vivo (FR21): partido I "%s"' % self.live_match.title),
+			('player1', 'Agregar a Google Calendar (FR19): partido J; perfil con nivel Advanced y favoritos (FR17, FR23)'),
+			('player10', 'Unirse a un partido abierto (FR5), aceptar las 2 invitaciones pendientes (FR15), perfil sin calificaciones'),
+			('player8 o player9', 'Intentar unirse al partido G (Advanced): no pueden (FR23.1); player9 tiene un reporte (FR18)'),
+			('player6', 'Salir del partido D con lista de espera: entra player7 (FR10, FR11)'),
+			('cualquiera de H', 'Ver el chat de solo lectura del partido cancelado (FR9, FR22)'),
+		]
+		self.table(('log in as', 'to show'), guide)
+
+		out(self.style.MIGRATE_HEADING('\n5. Verifications'))
+		for label, _passed in checks:
+			out(f'  OK  {label}')
