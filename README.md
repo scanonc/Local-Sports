@@ -38,6 +38,27 @@ Then open `http://127.0.0.1:8000/` in the browser.
 
 The navbar has an **EN | ES** button. English is the default; the choice is stored in a cookie (the browser language is ignored on purpose). Translations live in `locale/es/` and the compiled `django.mo` is committed, so nothing extra has to be installed. See [`locale/README.md`](locale/README.md) to add or update texts.
 
+## Demo data (`seed_demo`)
+
+`python manage.py seed_demo` fills the database with demo data for the Sprint Review, like a Laravel seeder. It creates the users `organizer` and `player1` .. `player10` (password `prueba123`) and five matches whose title starts with `[Demo]`:
+
+| Match | What it is for |
+|---|---|
+| Finished match | Past match with teams, result and ratings, so the profiles show statistics and skill level (FR23, FR23.1). |
+| Started match | Already started, with teams and no result: the organizer gets the result pop-up when logging in (FR20) and the players can rate each other (FR21). |
+| Open match | One free spot: join, waiting list and automatic replacement (FR5, FR10, FR11). `player9` has a pending invitation (FR15). |
+| Private match | Approval required, with a pending request from `player8` (FR4). |
+| Advanced match | Only Advanced players can join it (FR23.1). |
+
+```bash
+python manage.py seed_demo             # create the demo data (running it again does not duplicate it)
+python manage.py seed_demo --reset     # delete the demo data and create it again
+python manage.py seed_demo --clear     # delete the demo data only (use it after the demo)
+python manage.py seed_demo --password other-password   # use another password for the demo users
+```
+
+Only the demo users and the `[Demo]` matches are touched: a superuser or any other user or match is left alone. The command needs no migration and no server restart. The password is public (it is in this file), so use `--clear` when the demo ends.
+
 ## Email notifications
 
 Match update and cancellation emails are sent through Resend. Copy `.env.example`
