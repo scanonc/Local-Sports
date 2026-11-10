@@ -40,24 +40,32 @@ The navbar has an **EN | ES** button. English is the default; the choice is stor
 
 ## Demo data (`seed_demo`)
 
-`python manage.py seed_demo` fills the database with demo data for the Sprint Review, like a Laravel seeder. It creates the users `organizer` and `player1` .. `player10` (password `prueba123`) and five matches whose title starts with `[Demo]`:
+`python manage.py seed_demo` loads the demo data of the Sprint Review, like a Laravel seeder.
+
+> **It deletes ALL the data of the database** (`flush`, superusers and sessions included) and loads the same data every time, so it can be run as many times as needed. Create a superuser again with `createsuperuser` if the admin panel is needed.
+
+```bash
+python manage.py seed_demo            # local machine (DEBUG on)
+python manage.py seed_demo --force    # server (DEBUG off): --force is required
+python manage.py seed_demo --password other-password   # another password for the demo users
+```
+
+It creates the users `organizer` and `player1` .. `player10` (password `prueba123`) and 14 matches. No email is sent: everything is created directly with the ORM, and the whole command runs in one transaction. At the end it prints the credentials, the matches, the level of every player, which user to log in with for each requirement, and the checks it made.
 
 | Match | What it is for |
 |---|---|
-| Finished match | Past match with teams, result and ratings, so the profiles show statistics and skill level (FR23, FR23.1). |
-| Started match | Already started, with teams and no result: the organizer gets the result pop-up when logging in (FR20) and the players can rate each other (FR21). |
-| Open match | One free spot: join, waiting list and automatic replacement (FR5, FR10, FR11). `player9` has a pending invitation (FR15). |
-| Private match | Approval required, with a pending request from `player8` (FR4). |
-| Advanced match | Only Advanced players can join it (FR23.1). |
+| A1 .. A5 | Five past matches (3 to 30 days ago) with teams, results and ratings: the profiles get different statistics and levels (FR13, FR23, FR23.1). |
+| I | Ended yesterday with its result and no ratings: `player1` or `player2` can rate live (FR21). |
+| B | Started a few hours ago, with teams and no result: the organizer gets the result pop-up (FR20). |
+| C | In two days, exactly 10 confirmed and no teams: *Generate teams* (FR24). |
+| D | Full (6/6) with two players on the waiting list (FR10, FR11). |
+| E | Approval required, with two pending requests (FR4). |
+| F | Open match with chat and a shareable link; `player10` has a pending invitation (FR5, FR15, FR16, FR22). |
+| G | Advanced level: a player of a lower level cannot join (FR23.1). |
+| H | Cancelled, with a read-only chat (FR9, FR22). |
+| J | Upcoming, with `player1` confirmed: Add to Google Calendar (FR19). |
 
-```bash
-python manage.py seed_demo             # create the demo data (running it again does not duplicate it)
-python manage.py seed_demo --reset     # delete the demo data and create it again
-python manage.py seed_demo --clear     # delete the demo data only (use it after the demo)
-python manage.py seed_demo --password other-password   # use another password for the demo users
-```
-
-Only the demo users and the `[Demo]` matches are touched: a superuser or any other user or match is left alone. The command needs no migration and no server restart. The password is public (it is in this file), so use `--clear` when the demo ends.
+Levels: `player1` to `player3` Advanced, `player4` to `player7` Intermediate, `player8` and `player9` Beginner, and `player10` has no ratings. The password is public (it is in this file), so do not leave this data on a server that stays online.
 
 ## Email notifications
 
