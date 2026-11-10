@@ -51,13 +51,6 @@ User = get_user_model()
 DEFAULT_PASSWORD = 'prueba123'
 PLAYERS = range(1, 11)
 
-PLAYER_NAMES = {
-	1: ('Santiago', 'Ramírez'), 2: ('Camila', 'Torres'), 3: ('Andrés', 'Molina'),
-	4: ('Valentina', 'Ríos'), 5: ('Mateo', 'Herrera'), 6: ('Daniela', 'Cárdenas'),
-	7: ('Sebastián', 'Ospina'), 8: ('Mariana', 'Londoño'), 9: ('Felipe', 'Zapata'),
-	10: ('Isabela', 'Restrepo'),
-}
-
 # Average stars that each player receives in the history matches (thresholds in
 # matches/services/player_statistics.py: <= 3.0 Beginner, <= 4.0 Intermediate,
 # > 4.0 Advanced, and fewer than 3 ratings is always Beginner). player10 gets none.
@@ -72,15 +65,15 @@ EXPECTED_LEVEL = {
 # Different teams and results make the profile statistics differ.
 HISTORY = [
 	# key, days ago, title, location, level, team A, result
-	('A1', 30, 'Pichanga de los viernes', 'Cancha sintética EAFIT',
+	('A1', 30, 'DEMO historial y estadísticas 1 (FR13, FR23)', 'Cancha sintética EAFIT',
 	 MatchSkillLevel.INTERMEDIATE, {1, 3, 5, 7, 9}, MatchResult.TEAM_A),
-	('A2', 22, 'Partido de integración UPB', 'Cancha UPB, Laureles',
+	('A2', 22, 'DEMO historial y estadísticas 2 (FR13, FR23)', 'Cancha UPB, Laureles',
 	 MatchSkillLevel.BEGINNER, {1, 2, 4, 6, 8}, MatchResult.TEAM_A),
-	('A3', 15, 'Fútbol 5 en Belén', 'Unidad Deportiva de Belén',
+	('A3', 15, 'DEMO historial y estadísticas 3 (FR13, FR23)', 'Unidad Deportiva de Belén',
 	 MatchSkillLevel.INTERMEDIATE, {1, 3, 6, 9, 10}, MatchResult.TEAM_A),
-	('A4', 8, 'Clásico del barrio', 'Cancha sintética El Poblado',
+	('A4', 8, 'DEMO historial y estadísticas 4 (FR13, FR23)', 'Cancha sintética El Poblado',
 	 MatchSkillLevel.BEGINNER, {2, 5, 7, 9, 10}, MatchResult.DRAW),
-	('A5', 3, 'Mundialito de la U', 'Cancha sintética EAFIT',
+	('A5', 3, 'DEMO historial y estadísticas 5 (FR13, FR23)', 'Cancha sintética EAFIT',
 	 MatchSkillLevel.INTERMEDIATE, {2, 4, 5, 8, 9}, MatchResult.TEAM_B),
 ]
 LIVE_RATING_TEAM_A = {1, 2, 5, 6, 9}  # scenario I: ended yesterday, result team A
@@ -139,14 +132,12 @@ class Command(BaseCommand):
 	def create_users(self):
 		self.organizer = User.objects.create(
 			username='organizer', email='organizer@gmail.com', password=self.password_hash,
-			first_name='Laura', last_name='Gómez',
 		)
 		self.p = {}
 		for n in PLAYERS:
-			first, last = PLAYER_NAMES[n]
+			# No first/last name: the application then shows the username (player1, ...).
 			self.p[n] = User.objects.create(
 				username=f'player{n}', email=f'Player{n}@gmail.com', password=self.password_hash,
-				first_name=first, last_name=last,
 			)
 		self.number = {user.pk: n for n, user in self.p.items()}
 
@@ -240,7 +231,7 @@ class Command(BaseCommand):
 	def create_live_rating_match(self):
 		"""I) Ended yesterday, result registered, no ratings: rate live as player1 or player2."""
 		match = self.finished_match(
-			'Partido de ayer en La 70', local_at(self.now - timedelta(days=1), 20),
+			'DEMO calificar jugadores (FR21)', local_at(self.now - timedelta(days=1), 20),
 			location='Cancha La 70, Laureles', skill_level=MatchSkillLevel.BEGINNER,
 			team_a=LIVE_RATING_TEAM_A, result=MatchResult.TEAM_A,
 		)
@@ -250,7 +241,7 @@ class Command(BaseCommand):
 	def create_pending_result_match(self):
 		"""B) Started a few hours ago, teams generated, no result: the organizer sees the pop-up."""
 		match = self.new_match(
-			'Fútbol 5 de la tarde', self.now + timedelta(days=1), location='Cancha sintética EAFIT',
+			'DEMO resultado pendiente (FR20)', self.now + timedelta(days=1), location='Cancha sintética EAFIT',
 			skill_level=MatchSkillLevel.INTERMEDIATE,
 		)
 		self.join(match, PLAYERS, self.p, attended=True)
@@ -267,7 +258,7 @@ class Command(BaseCommand):
 	def create_ready_for_teams_match(self):
 		"""C) Active, in two days, exactly 10 confirmed, no teams yet: generate teams live."""
 		match = self.new_match(
-			'Pichanga del sábado', local_at(self.now + timedelta(days=2), 18),
+			'DEMO generar equipos (FR24)', local_at(self.now + timedelta(days=2), 18),
 			location='Cancha sintética El Poblado', max_players=10,
 		)
 		participants = self.join(match, PLAYERS, self.p)
@@ -279,7 +270,7 @@ class Command(BaseCommand):
 	def create_full_match_with_waiting_list(self):
 		"""D) Full match (6/6) with two players on the waiting list."""
 		match = self.new_match(
-			'Torneo relámpago', local_at(self.now + timedelta(days=3), 17),
+			'DEMO lista de espera (FR10, FR11)', local_at(self.now + timedelta(days=3), 17),
 			location='Unidad Deportiva de Belén', max_players=6,
 		)
 		self.join(match, range(1, 7), self.p)
@@ -290,7 +281,7 @@ class Command(BaseCommand):
 	def create_approval_match(self):
 		"""E) Approval required, two pending requests."""
 		match = self.new_match(
-			'Partido privado de amigos', local_at(self.now + timedelta(days=2), 20),
+			'DEMO aprobar solicitudes (FR4)', local_at(self.now + timedelta(days=2), 20),
 			location='Cancha UdeA', visibility=MatchVisibility.APPROVAL_REQUIRED,
 		)
 		self.join(match, (4, 5), self.p)
@@ -301,7 +292,7 @@ class Command(BaseCommand):
 	def create_open_match(self):
 		"""F) Open match to join, with chat and a shareable link."""
 		match = self.new_match(
-			'Pichanga abierta del domingo', local_at(self.now + timedelta(days=5), 10),
+			'DEMO unirse y chat (FR5, FR16, FR22)', local_at(self.now + timedelta(days=5), 10),
 			location='Parque Lineal La Presidenta', max_players=10,
 			invite_token=uuid.uuid5(uuid.NAMESPACE_URL, 'local-sports-demo-open-match'),
 		)
@@ -318,7 +309,7 @@ class Command(BaseCommand):
 	def create_advanced_match(self):
 		"""G) Advanced level: players of a lower level cannot join."""
 		match = self.new_match(
-			'Liga élite de la U', local_at(self.now + timedelta(days=4), 19),
+			'DEMO nivel requerido (FR23.1)', local_at(self.now + timedelta(days=4), 19),
 			location='Estadio Atanasio Girardot', skill_level=MatchSkillLevel.ADVANCED,
 		)
 		self.join(match, (1, 2, 3), self.p)
@@ -328,7 +319,7 @@ class Command(BaseCommand):
 	def create_cancelled_match(self):
 		"""H) Cancelled match with participants and a read-only chat."""
 		match = self.new_match(
-			'Partido cancelado por lluvia', local_at(self.now + timedelta(days=3), 16),
+			'DEMO partido cancelado (FR9)', local_at(self.now + timedelta(days=3), 16),
 			location='Cancha sintética EAFIT', status=MatchStatus.CANCELLED,
 		)
 		self.join(match, (1, 3, 5, 6, 7), self.p)
@@ -341,7 +332,7 @@ class Command(BaseCommand):
 	def create_calendar_match(self):
 		"""J) Upcoming match where player1 is confirmed: Add to Google Calendar."""
 		match = self.new_match(
-			'Fútbol 7 de integración', local_at(self.now + timedelta(days=4), 8),
+			'DEMO agregar a calendario (FR19)', local_at(self.now + timedelta(days=4), 8),
 			location='Cancha sintética EAFIT', max_players=10,
 		)
 		self.join(match, (1, 4, 6, 7), self.p)

@@ -50,7 +50,7 @@ python manage.py seed_demo --force    # server (DEBUG off): --force is required
 python manage.py seed_demo --password other-password   # another password for the demo users
 ```
 
-It creates the users `organizer` and `player1` .. `player10` (password `prueba123`) and 14 matches. No email is sent: everything is created directly with the ORM, and the whole command runs in one transaction. At the end it prints the credentials, the matches, the level of every player, which user to log in with for each requirement, and the checks it made.
+It creates the users `organizer` and `player1` .. `player10` (password `prueba123`; they have no first or last name, so the application shows the username) and 14 matches whose title starts with `DEMO` and says what they show, for example `DEMO generar equipos (FR24)`. No email is sent: everything is created directly with the ORM, and the whole command runs in one transaction. At the end it prints the credentials, the matches, the level of every player, which user to log in with for each requirement, and the checks it made.
 
 | Match | What it is for |
 |---|---|
